@@ -65,7 +65,7 @@ export default function AuthForm({ mode, compact = false }: AuthFormProps) {
 
     try {
       const supabase = createClient();
-      const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`;
+      const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || window.location.origin}/auth/callback`;
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
@@ -162,15 +162,24 @@ export default function AuthForm({ mode, compact = false }: AuthFormProps) {
     setFormLoading(true);
 
     try {
-      const supabase = createClient();
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email: loginForm.email.trim(),
-        password: loginForm.password,
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: loginForm.email.trim(),
+          password: loginForm.password,
+        }),
       });
 
-      if (error) {
-        setMessage({ type: "error", text: error.message });
+      const data = (await response.json().catch(() => ({}))) as {
+        error?: string;
+      };
+
+      if (!response.ok) {
+        setMessage({
+          type: "error",
+          text: data.error ?? "Erro ao entrar. Tente novamente.",
+        });
         return;
       }
 

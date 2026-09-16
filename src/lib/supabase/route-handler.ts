@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { getSupabasePublicEnv } from "@/lib/supabase/env";
 
-export async function createClient() {
+export async function createRouteHandlerClient() {
   const env = getSupabasePublicEnv();
   if (!env) {
     throw new Error("Supabase não configurado no servidor.");
@@ -15,14 +15,16 @@ export async function createClient() {
       getAll() {
         return cookieStore.getAll();
       },
-      setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
-        try {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
-        } catch {
-          // Ignorado em Server Components
-        }
+      setAll(
+        cookiesToSet: {
+          name: string;
+          value: string;
+          options?: Record<string, unknown>;
+        }[]
+      ) {
+        cookiesToSet.forEach(({ name, value, options }) =>
+          cookieStore.set(name, value, options)
+        );
       },
     },
   });

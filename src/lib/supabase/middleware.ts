@@ -1,21 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { getSupabasePublicEnv } from "@/lib/supabase/env";
 
 type CookieToSet = {
   name: string;
   value: string;
   options?: Record<string, unknown>;
 };
-
-function getSupabaseEnv() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
-
-  if (!url || !anonKey) return null;
-  if (!url.startsWith("https://") || !url.includes("supabase.co")) return null;
-
-  return { url, anonKey };
-}
 
 function applyCookies(
   request: NextRequest,
@@ -39,7 +30,7 @@ function applyCookies(
 }
 
 export async function updateSession(request: NextRequest) {
-  const env = getSupabaseEnv();
+  const env = getSupabasePublicEnv();
   if (!env) {
     return NextResponse.next({ request });
   }
