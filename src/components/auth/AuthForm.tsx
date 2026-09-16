@@ -171,9 +171,13 @@ export default function AuthForm({ mode, compact = false }: AuthFormProps) {
         }),
       });
 
-      const data = (await response.json().catch(() => ({}))) as {
-        error?: string;
-      };
+      const raw = await response.text();
+      let data: { error?: string } = {};
+      try {
+        data = raw ? (JSON.parse(raw) as { error?: string }) : {};
+      } catch {
+        data = { error: raw || "Erro ao entrar. Tente novamente." };
+      }
 
       if (!response.ok) {
         setMessage({

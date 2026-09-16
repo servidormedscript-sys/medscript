@@ -1,13 +1,20 @@
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
-import { getSupabasePublicEnv } from "@/lib/supabase/env";
+import {
+  getSupabaseEnvIssues,
+  getSupabasePublicEnv,
+} from "@/lib/supabase/env";
 
 export async function POST(request: Request) {
-  if (!getSupabasePublicEnv()) {
+  const env = getSupabasePublicEnv();
+  if (!env) {
+    const issues = getSupabaseEnvIssues();
     return NextResponse.json(
       {
         error:
-          "Supabase não configurado no servidor. Verifique as variáveis na Vercel.",
+          issues.length > 0
+            ? `Configure na Vercel: ${issues.join(", ")}. Depois faça redeploy.`
+            : "Supabase não configurado no servidor. Verifique as variáveis na Vercel.",
       },
       { status: 500 }
     );
@@ -42,9 +49,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[auth/login]", error);
-    return NextResponse.json(
-      { error: "Erro ao entrar. Tente novamente." },
-      { status: 500 }
-    );
+    const detail =
+      error instanceof Error ? error.message : "Erro ao entrar. Tente novamente.";
+    return NextResponse.json({ error: detail }, { status: 500 });
   }
 }
