@@ -2,6 +2,8 @@ import Sidebar from "@/components/dashboard/Sidebar";
 import DashboardAlertsLayer from "@/components/dashboard/DashboardAlertsLayer";
 import { requireSessionProfile, isAdmin } from "@/lib/auth/get-session-profile";
 
+export const dynamic = "force-dynamic";
+
 export default async function DashboardLayout({
   children,
 }: {
