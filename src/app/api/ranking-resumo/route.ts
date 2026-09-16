@@ -27,6 +27,22 @@ const SHIFT_SELECT = `
   )
 `;
 
+type ShiftMemberProfile = {
+  id: string;
+  full_name: string | null;
+  email: string;
+};
+
+function getShiftMember(
+  member: unknown,
+): ShiftMemberProfile | null {
+  if (!member) return null;
+  if (Array.isArray(member)) {
+    return (member[0] as ShiftMemberProfile | undefined) ?? null;
+  }
+  return member as ShiftMemberProfile;
+}
+
 export async function GET(request: Request) {
   const session = await getSessionWithAdmin();
   if ("error" in session && session.error) return session.error;
@@ -92,9 +108,7 @@ export async function GET(request: Request) {
 
   for (const shift of allShifts) {
     const hours = calculateShiftHours(shift.start_time, shift.end_time);
-    const member = shift.member as
-      | { id: string; full_name: string | null; email: string }
-      | null;
+    const member = getShiftMember(shift.member);
     const memberId = shift.member_id;
     const fullName =
       member?.full_name ?? member?.email ?? "Usuário sem nome";

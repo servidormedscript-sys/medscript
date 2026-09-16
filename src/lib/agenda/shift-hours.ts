@@ -4,7 +4,7 @@ export function parseShiftTimeToMinutes(timeStr: string) {
 }
 
 export function calculateShiftHours(startTime: string, endTime: string) {
-  let start = parseShiftTimeToMinutes(startTime);
+  const start = parseShiftTimeToMinutes(startTime);
   let end = parseShiftTimeToMinutes(endTime);
 
   if (end <= start) {
