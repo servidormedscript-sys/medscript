@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Profile, UserType } from "@/lib/types/profile";
 import type { ShiftSchedule } from "@/lib/agenda/types";
 import { formatShiftDate, formatShiftTime } from "@/lib/agenda/format";
+import { useClinicRealtime } from "@/hooks/useClinicRealtime";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -21,6 +23,7 @@ function toDateKey(year: number, month: number, day: number) {
 }
 
 export default function ShiftScheduleApp({ isAdmin }: ShiftScheduleAppProps) {
+  const { confirm, dialog } = useConfirmDialog();
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth() + 1);
@@ -64,6 +67,8 @@ export default function ShiftScheduleApp({ isAdmin }: ShiftScheduleAppProps) {
   useEffect(() => {
     loadShifts();
   }, [loadShifts]);
+
+  useClinicRealtime(loadShifts);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -152,7 +157,14 @@ export default function ShiftScheduleApp({ isAdmin }: ShiftScheduleAppProps) {
   }
 
   async function handleDeleteShift(shiftId: string) {
-    if (!confirm("Remover este plantão?")) return;
+    const confirmed = await confirm({
+      title: "Remover plantão?",
+      description:
+        "O plantão será excluído da agenda. O sub-usuário não verá mais este agendamento.",
+      confirmLabel: "Remover plantão",
+      tone: "danger",
+    });
+    if (!confirmed) return;
 
     const res = await fetch(`/api/agenda/plantoes/${shiftId}`, { method: "DELETE" });
     const data = await res.json();
@@ -397,6 +409,7 @@ export default function ShiftScheduleApp({ isAdmin }: ShiftScheduleAppProps) {
           )}
         </section>
       </div>
+      {dialog}
     </div>
   );
 }

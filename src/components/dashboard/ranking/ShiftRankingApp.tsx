@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatShiftDate, formatShiftTime } from "@/lib/agenda/format";
 import { downloadShiftSummaryPdf } from "@/lib/agenda/export-shift-summary-pdf";
+import { useClinicRealtime } from "@/hooks/useClinicRealtime";
 import {
   formatShiftHours,
   getMonthLabel,
@@ -80,6 +81,8 @@ export default function ShiftRankingApp() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useClinicRealtime(loadData);
 
   async function handleExportPdf() {
     if (!data) return;

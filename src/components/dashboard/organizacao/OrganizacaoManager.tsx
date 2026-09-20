@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { Organization, Profile, UserType } from "@/lib/types/profile";
+import { useClinicRealtime } from "@/hooks/useClinicRealtime";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 
 type TeamWithMembers = Organization & {
   organization_members: {
@@ -21,6 +23,7 @@ type OrganizacaoManagerProps = {
 };
 
 export default function OrganizacaoManager({ isAdmin }: OrganizacaoManagerProps) {
+  const { confirm, dialog } = useConfirmDialog();
   const [activeTab, setActiveTab] = useState<"usuarios" | "equipes">("usuarios");
   const [users, setUsers] = useState<Profile[]>([]);
   const [teams, setTeams] = useState<TeamWithMembers[]>([]);
@@ -64,6 +67,8 @@ export default function OrganizacaoManager({ isAdmin }: OrganizacaoManagerProps)
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useClinicRealtime(loadData);
 
   async function handleCreateUser(e: React.FormEvent) {
     e.preventDefault();
@@ -146,6 +151,20 @@ export default function OrganizacaoManager({ isAdmin }: OrganizacaoManagerProps)
   }
 
   async function handleRemoveMember(teamId: string, profileId: string) {
+    const member = teams
+      .find((team) => team.id === teamId)
+      ?.organization_members.find((item) => item.profile_id === profileId)?.profile;
+
+    const confirmed = await confirm({
+      title: "Remover membro da equipe?",
+      description: member
+        ? `${member.full_name ?? member.email} deixará de fazer parte desta equipe.`
+        : "Este usuário deixará de fazer parte desta equipe.",
+      confirmLabel: "Remover membro",
+      tone: "danger",
+    });
+    if (!confirmed) return;
+
     setMessage(null);
 
     const res = await fetch(
@@ -505,6 +524,7 @@ export default function OrganizacaoManager({ isAdmin }: OrganizacaoManagerProps)
           </div>
         </div>
       )}
+      {dialog}
     </div>
   );
 }

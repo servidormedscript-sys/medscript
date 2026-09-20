@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import NewPatientModal from "@/components/dashboard/pacientes/NewPatientModal";
+import { useClinicRealtime } from "@/hooks/useClinicRealtime";
 import { meuPacienteGraveT0Url } from "@/lib/dashboard/meu-paciente-grave-url";
 import type { DashboardOverview, KanbanColumnStatus } from "@/lib/dashboard/overview";
 import {
@@ -114,6 +115,8 @@ export default function DashboardOverview() {
   useEffect(() => {
     loadOverview();
   }, [loadOverview]);
+
+  useClinicRealtime(loadOverview);
 
   const quickProtocols = CLINICAL_PROTOCOLS.filter((protocol) =>
     QUICK_PROTOCOLS.includes(protocol.id as (typeof QUICK_PROTOCOLS)[number])

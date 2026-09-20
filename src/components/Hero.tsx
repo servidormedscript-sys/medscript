@@ -1,4 +1,5 @@
 import BrandLogo from "@/components/BrandLogo";
+import SupportRequestButton from "@/components/support/SupportRequestButton";
 import Link from "next/link";
 
 const stats = [
@@ -39,7 +40,7 @@ export default function Hero() {
                 href="/cadastro"
                 className="inline-flex h-11 items-center justify-center rounded-full bg-ocean-800 px-6 text-sm font-semibold text-white transition-colors hover:bg-ocean-700"
               >
-                Começar agora
+                Criar conta
               </Link>
               <Link
                 href="/login"
@@ -47,6 +48,7 @@ export default function Hero() {
               >
                 Já tenho uma conta
               </Link>
+              <SupportRequestButton variant="landing" />
             </div>
           </div>
 

@@ -8,8 +8,9 @@ import {
   formatMedicationAlertTime,
   formatMedicationDateTime,
 } from "@/lib/dashboard/overview";
+import { useClinicRealtime, usePollWhileVisible } from "@/hooks/useClinicRealtime";
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 8_000;
 const DISMISS_STORAGE_KEY = "medscript.dismissed-medication-alerts";
 
 function readDismissedAlerts() {
@@ -48,11 +49,10 @@ export default function MedicationAlertNotifier() {
 
   useEffect(() => {
     setDismissedIds(readDismissedAlerts());
-    loadAlerts();
+  }, []);
 
-    const interval = window.setInterval(loadAlerts, POLL_INTERVAL_MS);
-    return () => window.clearInterval(interval);
-  }, [loadAlerts]);
+  usePollWhileVisible(loadAlerts, POLL_INTERVAL_MS);
+  useClinicRealtime(loadAlerts);
 
   const visibleAlerts = useMemo(
     () => alerts.filter((alert) => !dismissedIds.has(alert.alert_id)),

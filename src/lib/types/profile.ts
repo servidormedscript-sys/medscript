@@ -1,5 +1,7 @@
 export type UserRole = "admin" | "member";
 export type UserType = "plantonista" | "estudante";
+export type PlatformRole = "super_admin";
+export type AccountStatus = "active" | "blocked" | "deactivated";
 
 export type Profile = {
   id: string;
@@ -11,6 +13,9 @@ export type Profile = {
   parent_admin_id: string | null;
   clinic_name: string | null;
   phone: string | null;
+  platform_role: PlatformRole | null;
+  account_status: AccountStatus;
+  deactivated_at: string | null;
   bio?: string | null;
   specialty?: string | null;
   created_at: string;

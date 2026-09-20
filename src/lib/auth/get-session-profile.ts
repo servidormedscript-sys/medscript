@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Profile } from "@/lib/types/profile";
+import { assertAccountCanLogin } from "@/lib/platform/account-access";
 
 export async function getSessionProfile() {
   const supabase = await createClient();
@@ -12,7 +14,8 @@ export async function getSessionProfile() {
     return { user: null, profile: null };
   }
 
-  const { data: profile } = await supabase
+  const admin = createAdminClient();
+  const { data: profile } = await admin
     .from("profiles")
     .select("*")
     .eq("id", user.id)
@@ -26,6 +29,13 @@ export async function requireSessionProfile() {
 
   if (!user) {
     redirect("/login");
+  }
+
+  if (profile) {
+    const access = await assertAccountCanLogin(profile);
+    if (!access.ok) {
+      redirect("/login?error=acesso");
+    }
   }
 
   return { user, profile };

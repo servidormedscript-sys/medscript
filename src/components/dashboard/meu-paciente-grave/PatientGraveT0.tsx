@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useClinicRealtime } from "@/hooks/useClinicRealtime";
 import {
   buildEmptyChecklist,
   COMPLEMENTARY_SECTIONS,
@@ -83,6 +84,8 @@ export default function PatientGraveT0() {
   useEffect(() => {
     loadPatients();
   }, [loadPatients]);
+
+  useClinicRealtime(loadPatients);
 
   useEffect(() => {
     if (

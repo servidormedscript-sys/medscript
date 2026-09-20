@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { KanbanEpisode, PatientStatus } from "@/lib/types/patient";
+import { useClinicRealtime } from "@/hooks/useClinicRealtime";
 import {
   ALLOWED_TRANSITIONS,
   KANBAN_COLUMNS,
@@ -74,6 +75,8 @@ export default function PatientKanbanBoard() {
   useEffect(() => {
     loadKanban();
   }, [loadKanban]);
+
+  useClinicRealtime(loadKanban);
 
   useEffect(() => {
     const tab = searchParams.get("tab");

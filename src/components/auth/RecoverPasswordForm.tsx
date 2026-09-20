@@ -1,6 +1,7 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import { translateAuthError } from "@/lib/auth/translate-auth-error";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -30,7 +31,7 @@ export default function RecoverPasswordForm() {
       });
 
       if (error) {
-        setMessage({ type: "error", text: error.message });
+        setMessage({ type: "error", text: translateAuthError(error.message) });
         return;
       }
 

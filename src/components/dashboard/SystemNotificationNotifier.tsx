@@ -1,10 +1,14 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { UserNotification } from "@/lib/notifications/types";
+import {
+  useNotificationRealtime,
+  usePollWhileVisible,
+} from "@/hooks/useClinicRealtime";
 
-const POLL_INTERVAL_MS = 30_000;
+const POLL_INTERVAL_MS = 8_000;
 
 export default function SystemNotificationNotifier() {
   const router = useRouter();
@@ -22,11 +26,8 @@ export default function SystemNotificationNotifier() {
     }
   }, []);
 
-  useEffect(() => {
-    loadNotifications();
-    const interval = window.setInterval(loadNotifications, POLL_INTERVAL_MS);
-    return () => window.clearInterval(interval);
-  }, [loadNotifications]);
+  usePollWhileVisible(loadNotifications, POLL_INTERVAL_MS);
+  useNotificationRealtime(loadNotifications);
 
   const visibleNotifications = useMemo(
     () => notifications.filter((item) => !item.dismissed_at),

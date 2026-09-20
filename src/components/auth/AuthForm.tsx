@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { translateAuthError } from "@/lib/auth/translate-auth-error";
 
 type AuthMode = "login" | "register";
 
@@ -79,7 +80,7 @@ export default function AuthForm({ mode, compact = false }: AuthFormProps) {
       });
 
       if (error) {
-        setMessage({ type: "error", text: `Não foi possível conectar: ${error.message}` });
+        setMessage({ type: "error", text: translateAuthError(error.message) });
       }
     } catch {
       setMessage({
@@ -129,7 +130,7 @@ export default function AuthForm({ mode, compact = false }: AuthFormProps) {
       });
 
       if (error) {
-        setMessage({ type: "error", text: error.message });
+        setMessage({ type: "error", text: translateAuthError(error.message) });
         return;
       }
 
@@ -172,9 +173,9 @@ export default function AuthForm({ mode, compact = false }: AuthFormProps) {
       });
 
       const raw = await response.text();
-      let data: { error?: string } = {};
+      let data: { error?: string; redirectTo?: string } = {};
       try {
-        data = raw ? (JSON.parse(raw) as { error?: string }) : {};
+        data = raw ? (JSON.parse(raw) as { error?: string; redirectTo?: string }) : {};
       } catch {
         data = { error: raw || "Erro ao entrar. Tente novamente." };
       }
@@ -187,7 +188,7 @@ export default function AuthForm({ mode, compact = false }: AuthFormProps) {
         return;
       }
 
-      router.push("/dashboard");
+      router.push(data.redirectTo ?? "/dashboard");
       router.refresh();
     } catch {
       setMessage({ type: "error", text: "Erro ao entrar. Tente novamente." });

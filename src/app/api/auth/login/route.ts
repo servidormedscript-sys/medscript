@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import { createRouteHandlerClient } from "@/lib/supabase/route-handler";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { translateAuthError } from "@/lib/auth/translate-auth-error";
 import {
   getSupabaseEnvIssues,
   getSupabasePublicEnv,
 } from "@/lib/supabase/env";
+import { assertAccountCanLogin } from "@/lib/platform/account-access";
+import type { Profile } from "@/lib/types/profile";
 
 export async function POST(request: Request) {
   const env = getSupabasePublicEnv();
@@ -37,16 +41,43 @@ export async function POST(request: Request) {
     }
 
     const supabase = await createRouteHandlerClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 401 });
+      return NextResponse.json(
+        { error: translateAuthError(error.message) },
+        { status: 401 }
+      );
     }
 
-    return NextResponse.json({ ok: true });
+    if (!data.user) {
+      return NextResponse.json({ error: "Erro ao entrar. Tente novamente." }, { status: 401 });
+    }
+
+    const admin = createAdminClient();
+    const { data: profile } = await admin
+      .from("profiles")
+      .select("*")
+      .eq("id", data.user.id)
+      .single();
+
+    if (!profile) {
+      await supabase.auth.signOut();
+      return NextResponse.json({ error: "Perfil não encontrado." }, { status: 404 });
+    }
+
+    const access = await assertAccountCanLogin(profile as Profile);
+    if (!access.ok) {
+      await supabase.auth.signOut();
+      return NextResponse.json({ error: access.message }, { status: 403 });
+    }
+
+    const redirectTo = "/dashboard";
+
+    return NextResponse.json({ ok: true, redirectTo });
   } catch (error) {
     console.error("[auth/login]", error);
     const detail =

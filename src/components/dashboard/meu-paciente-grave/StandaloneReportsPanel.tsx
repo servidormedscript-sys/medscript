@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { ClinicalAssessmentRecord } from "@/lib/types/clinical-assessment";
+import { useClinicRealtime } from "@/hooks/useClinicRealtime";
 
 export type StandaloneReport = Pick<
   ClinicalAssessmentRecord,
@@ -50,6 +51,8 @@ export default function StandaloneReportsPanel({
       loadReports();
     }
   }, [isOpen, loadReports]);
+
+  useClinicRealtime(loadReports, isOpen);
 
   return (
     <div className={embedded ? "space-y-4" : "space-y-6"}>

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { DocumentationCardPublic, DocumentationFile } from "@/lib/documentation/types";
+import { useClinicRealtime } from "@/hooks/useClinicRealtime";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 
 const UNLOCK_STORAGE_KEY = "medscript.unlocked-doc-cards";
 
@@ -31,6 +33,7 @@ type DocumentacoesAppProps = {
 };
 
 export default function DocumentacoesApp({ isAdmin }: DocumentacoesAppProps) {
+  const { confirm, dialog } = useConfirmDialog();
   const [cards, setCards] = useState<DocumentationCardPublic[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(
@@ -95,8 +98,22 @@ export default function DocumentacoesApp({ isAdmin }: DocumentacoesAppProps) {
     setMessage({ type: "success", text: "Card criado com sucesso." });
   }
 
+  useEffect(() => {
+    setUnlockedIds(readUnlockedCards());
+    loadCards();
+  }, [loadCards]);
+
+  useClinicRealtime(loadCards);
+
   async function handleDeleteCard(cardId: string) {
-    if (!confirm("Excluir este card e todos os anexos?")) return;
+    const confirmed = await confirm({
+      title: "Excluir card de documentação?",
+      description:
+        "Esta ação remove o card e todos os anexos vinculados. Não é possível desfazer.",
+      confirmLabel: "Excluir card",
+      tone: "danger",
+    });
+    if (!confirmed) return;
 
     const res = await fetch(`/api/documentacoes/cards/${cardId}`, { method: "DELETE" });
     const data = await res.json();
@@ -148,7 +165,13 @@ export default function DocumentacoesApp({ isAdmin }: DocumentacoesAppProps) {
   }
 
   async function handleDeleteFile(cardId: string, fileId: string) {
-    if (!confirm("Remover este anexo?")) return;
+    const confirmed = await confirm({
+      title: "Remover anexo?",
+      description: "O arquivo será excluído permanentemente deste card.",
+      confirmLabel: "Remover anexo",
+      tone: "danger",
+    });
+    if (!confirmed) return;
 
     const res = await fetch(`/api/documentacoes/files/${fileId}`, { method: "DELETE" });
     const data = await res.json();
@@ -462,6 +485,7 @@ export default function DocumentacoesApp({ isAdmin }: DocumentacoesAppProps) {
           })}
         </div>
       )}
+      {dialog}
     </div>
   );
 }

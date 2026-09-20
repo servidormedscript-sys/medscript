@@ -34,6 +34,14 @@ export default function SidebarNavIcon({ href, active = false }: SidebarNavIconP
           <path d="M9 12h6M9 16h4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
         </svg>
       );
+    case "/dashboard/escola-emergencia":
+      return (
+        <svg className={`h-[18px] w-[18px] shrink-0 ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3 2 9l10 6 10-6-10-6Z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
+          <path d="M6 11v5.5c0 .8 2.7 2.5 6 2.5s6-1.7 6-2.5V11" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M22 9v6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        </svg>
+      );
     case "/dashboard/organizacao-clinica":
       return (
         <svg className={`h-[18px] w-[18px] shrink-0 ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -60,6 +68,13 @@ export default function SidebarNavIcon({ href, active = false }: SidebarNavIconP
         <svg className={`h-[18px] w-[18px] shrink-0 ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
           <path d="M5 19V5M5 19h14M9 15v-3M13 15V9M17 15v-2" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M4 19h16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        </svg>
+      );
+    case "/dashboard/admin-plataforma":
+      return (
+        <svg className={`h-[18px] w-[18px] shrink-0 ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M12 3 4 7v6c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V7l-8-4Z" stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" />
+          <path d="M9 12.5 11 14.5 15.5 10" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       );
     default:

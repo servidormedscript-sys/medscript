@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ActivePatientEpisode } from "@/lib/types/clinical-assessment";
+import { useClinicRealtime } from "@/hooks/useClinicRealtime";
+import { useConfirmDialog } from "@/hooks/useConfirmDialog";
 import {
   DOSE_INTERVAL_OPTIONS,
   formatMedicationDateTime,
@@ -30,6 +32,7 @@ type PatientSummaryPanelProps = {
 export default function PatientSummaryPanel({
   initialEpisodeId,
 }: PatientSummaryPanelProps) {
+  const { confirm, dialog } = useConfirmDialog();
   const [patients, setPatients] = useState<ActivePatientEpisode[]>([]);
   const [selectedEpisodeId, setSelectedEpisodeId] = useState("");
   const [items, setItems] = useState<PatientCareItem[]>([]);
@@ -114,6 +117,13 @@ export default function PatientSummaryPanel({
     }
     loadItems(selectedEpisodeId);
   }, [selectedEpisodeId, loadItems]);
+
+  const refreshSummary = useCallback(() => {
+    loadPatients();
+    if (selectedEpisodeId) loadItems(selectedEpisodeId);
+  }, [loadPatients, loadItems, selectedEpisodeId]);
+
+  useClinicRealtime(refreshSummary);
 
   async function createExam(e: React.FormEvent) {
     e.preventDefault();
@@ -284,7 +294,14 @@ export default function PatientSummaryPanel({
   }
 
   async function removeItem(itemId: string) {
-    if (!window.confirm("Remover esta solicitação?")) return;
+    const confirmed = await confirm({
+      title: "Remover solicitação?",
+      description:
+        "Exames ou medicamentos registrados neste item serão excluídos do resumo do paciente.",
+      confirmLabel: "Remover",
+      tone: "danger",
+    });
+    if (!confirmed) return;
 
     setError(null);
     const res = await fetch(`/api/pacientes/resumo/${itemId}`, { method: "DELETE" });
@@ -730,6 +747,7 @@ export default function PatientSummaryPanel({
           )}
         </>
       )}
+      {dialog}
     </div>
   );
 }

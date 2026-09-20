@@ -2,7 +2,7 @@
 
 import BrandLogo from "@/components/BrandLogo";
 import SidebarNavIcon from "@/components/dashboard/SidebarNavIcon";
-import type { Profile } from "@/lib/types/profile";
+import type { Profile, UserType } from "@/lib/types/profile";
 import { getProfileAvatarUrl } from "@/lib/profile/avatar";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -10,6 +10,7 @@ import { dashboardNav } from "@/lib/dashboard/nav";
 
 type SidebarProps = {
   isAdmin: boolean;
+  isSuperAdmin: boolean;
   profile: Profile | null;
   userEmail?: string | null;
 };
@@ -23,22 +24,77 @@ function getInitials(name: string) {
     .join("");
 }
 
+function getRoleLabel(
+  isSuperAdmin: boolean,
+  isAdmin: boolean,
+  userType: UserType | null | undefined,
+) {
+  if (isSuperAdmin) return "Admin do sistema";
+  if (isAdmin) return "Administrador da clínica";
+  if (userType === "plantonista") return "Plantonista";
+  if (userType === "estudante") return "Estudante";
+  return "Sub-usuário";
+}
+
 export default function Sidebar({
   isAdmin,
+  isSuperAdmin,
   profile,
   userEmail,
 }: SidebarProps) {
   const pathname = usePathname();
 
-  const visibleNav = dashboardNav.filter(
-    (item) => !item.adminOnly || isAdmin,
+  const mainNav = dashboardNav.filter(
+    (item) =>
+      !item.superAdminOnly && (!item.adminOnly || isAdmin),
+  );
+  const platformNav = dashboardNav.filter(
+    (item) => item.superAdminOnly && isSuperAdmin,
   );
 
   const displayName = profile?.full_name ?? userEmail ?? "Usuário";
-  const roleLabel = isAdmin ? "Administrador da clínica" : "Sub-usuário";
+  const roleLabel = getRoleLabel(isSuperAdmin, isAdmin, profile?.user_type);
   const initials = getInitials(displayName) || "U";
   const avatarUrl = getProfileAvatarUrl(profile?.avatar_url);
   const isProfilePage = pathname === "/dashboard/perfil";
+
+  function renderNavItem(item: (typeof dashboardNav)[number], index: number) {
+    const isActive = item.exact
+      ? pathname === item.href
+      : pathname.startsWith(item.href);
+
+    return (
+      <li
+        key={item.href}
+        className="sidebar-nav-item"
+        style={{ animationDelay: `${index * 55}ms` }}
+      >
+        <Link
+          href={item.href}
+          className={`sidebar-nav-link group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm transition-all duration-300 ${
+            isActive
+              ? "bg-white/10 font-medium text-white shadow-lg shadow-black/15"
+              : "text-white/70 hover:translate-x-1 hover:bg-white/[0.06] hover:text-white"
+          }`}
+        >
+          {isActive ? (
+            <span
+              className="sidebar-active-indicator absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-med-red"
+              aria-hidden="true"
+            />
+          ) : null}
+          <SidebarNavIcon href={item.href} active={isActive} />
+          <span className="relative z-[1]">{item.label}</span>
+          {!isActive ? (
+            <span
+              className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/[0.07] to-transparent opacity-0 transition-all duration-500 group-hover:left-full group-hover:opacity-100"
+              aria-hidden="true"
+            />
+          ) : null}
+        </Link>
+      </li>
+    );
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh w-64 flex-col overflow-hidden border-r border-white/10 bg-gradient-to-b from-navy-950 via-navy-900 to-ocean-950 text-white shadow-xl shadow-navy-950/30">
@@ -71,45 +127,22 @@ export default function Sidebar({
           Menu
         </p>
         <ul className="space-y-1">
-          {visibleNav.map((item, index) => {
-            const isActive = item.exact
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
-
-            return (
-              <li
-                key={item.href}
-                className="sidebar-nav-item"
-                style={{ animationDelay: `${index * 55}ms` }}
-              >
-                <Link
-                  href={item.href}
-                  className={`sidebar-nav-link group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm transition-all duration-300 ${
-                    isActive
-                      ? "bg-white/10 font-medium text-white shadow-lg shadow-black/15"
-                      : "text-white/70 hover:translate-x-1 hover:bg-white/[0.06] hover:text-white"
-                  }`}
-                >
-                  {isActive ? (
-                    <span
-                      className="sidebar-active-indicator absolute bottom-2 left-0 top-2 w-1 rounded-r-full bg-med-red"
-                      aria-hidden="true"
-                    />
-                  ) : null}
-                  <SidebarNavIcon href={item.href} active={isActive} />
-                  <span className="relative z-[1]">{item.label}</span>
-                  {!isActive ? (
-                    <span
-                      className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/[0.07] to-transparent opacity-0 transition-all duration-500 group-hover:left-full group-hover:opacity-100"
-                      aria-hidden="true"
-                    />
-                  ) : null}
-                </Link>
-              </li>
-            );
-          })}
+          {mainNav.map((item, index) => renderNavItem(item, index))}
         </ul>
       </nav>
+
+      {platformNav.length > 0 ? (
+        <nav className="relative shrink-0 border-t border-white/10 px-3 pb-2 pt-4">
+          <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
+            Plataforma
+          </p>
+          <ul className="space-y-1">
+            {platformNav.map((item, index) => renderNavItem(item, index + mainNav.length))}
+          </ul>
+        </nav>
+      ) : null}
+
+      <div className="relative min-h-0 flex-1" aria-hidden="true" />
 
       <div className="relative mt-auto shrink-0 border-t border-white/10 px-3 py-3">
         <div
