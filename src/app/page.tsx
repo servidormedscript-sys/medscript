@@ -1,5 +1,6 @@
 import Hero from "@/components/Hero";
 import Footer from "@/components/Footer";
+import LandingAmbient from "@/components/LandingAmbient";
 import LandingPageBackground from "@/components/LandingPageBackground";
 import dynamic from "next/dynamic";
 
@@ -20,12 +21,15 @@ const PricingLazy = dynamic(() => import("@/components/Pricing"), {
 export default function Home() {
   return (
     <>
-      <main>
-        <Hero />
-        <LandingPageBackground>
-          <FeaturesLazy />
-          <PricingLazy />
-        </LandingPageBackground>
+      <main className="relative isolate">
+        <LandingAmbient />
+        <div className="relative z-10">
+          <Hero />
+          <LandingPageBackground>
+            <FeaturesLazy />
+            <PricingLazy />
+          </LandingPageBackground>
+        </div>
       </main>
       <Footer />
     </>

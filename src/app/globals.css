@@ -85,6 +85,10 @@ body {
   animation-delay: 1.3s;
 }
 
+.landing-ambient {
+  contain: layout paint style;
+}
+
 .landing-fx-layer {
   contain: paint;
   isolation: isolate;
@@ -94,6 +98,7 @@ body {
   .landing-ecg-track,
   .landing-float-slow,
   .landing-pulse-ring,
+  .landing-ambient-blob,
   .hero-logo-glow,
   .hero-logo-ring,
   .pricing-plan-card,
@@ -181,8 +186,7 @@ body {
 }
 
 .landing-ecg-track {
-  animation: ecg-track-scroll 22s linear infinite;
-  will-change: transform;
+  animation: ecg-track-scroll 28s linear infinite;
 }
 
 .landing-ecg-reverse {

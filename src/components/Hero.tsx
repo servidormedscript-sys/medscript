@@ -12,7 +12,7 @@ export default function Hero() {
     <>
       <section
         id="inicio"
-        className="overflow-visible bg-ocean-100 pb-10 pt-10 md:pb-14 md:pt-14 lg:pb-16 lg:pt-16"
+        className="overflow-visible bg-ocean-100/80 pb-10 pt-10 md:pb-14 md:pt-14 lg:pb-16 lg:pt-16"
       >
         <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-2 lg:gap-8">
           <div className="max-w-xl">
@@ -54,10 +54,19 @@ export default function Hero() {
           <div className="relative mx-auto flex w-full justify-center py-4 md:py-5">
             <div className="relative h-[280px] w-[280px] shrink-0 md:h-[340px] md:w-[340px]">
               <div
-                className="pointer-events-none absolute inset-0 rounded-full bg-med-red/25 ring-2 ring-med-red/20"
+                className="hero-logo-glow pointer-events-none absolute inset-0 rounded-full bg-med-red/35 shadow-[0_0_48px_16px_rgba(215,38,56,0.14)]"
                 aria-hidden="true"
               />
-              <div className="relative z-10 flex h-full w-full items-center justify-center">                <BrandLogo size="hero" priority />
+              <div
+                className="hero-logo-ring pointer-events-none absolute inset-0 rounded-full border-2 border-med-red/30 bg-med-red/10"
+                aria-hidden="true"
+              />
+              <div
+                className="hero-logo-ring hero-logo-ring-delay pointer-events-none absolute inset-0 rounded-full border-2 border-med-red/20 bg-med-red/5"
+                aria-hidden="true"
+              />
+              <div className="relative z-10 flex h-full w-full items-center justify-center">
+                <BrandLogo size="hero" priority />
               </div>
             </div>
           </div>
