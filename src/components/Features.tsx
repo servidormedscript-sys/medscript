@@ -7,7 +7,6 @@ import {
   IconPrescription,
   IconShield,
 } from "@/components/icons";
-import { PROTOCOL_CATEGORIES } from "@/lib/clinical/protocols/categories";
 import { useState } from "react";
 
 const modules = [
@@ -57,7 +56,32 @@ const kanbanColumns = [
   { label: "Alta recente", count: 1, dot: "bg-emerald-500", card: "border-emerald-200 bg-emerald-50/80" },
 ];
 
-const previewCategories = PROTOCOL_CATEGORIES.slice(0, 4);
+const previewCategories = [
+  {
+    id: "emergencia",
+    name: "Emergência",
+    borderClass: "border-red-200",
+    accentClass: "bg-red-50 text-red-800 border-red-200",
+  },
+  {
+    id: "cardio",
+    name: "Cardiologia",
+    borderClass: "border-rose-200",
+    accentClass: "bg-rose-50 text-rose-800 border-rose-200",
+  },
+  {
+    id: "neuro",
+    name: "Neurologia",
+    borderClass: "border-violet-200",
+    accentClass: "bg-violet-50 text-violet-800 border-violet-200",
+  },
+  {
+    id: "pediatria",
+    name: "Pediatria",
+    borderClass: "border-sky-200",
+    accentClass: "bg-sky-50 text-sky-800 border-sky-200",
+  },
+] as const;
 
 function PreviewShell({ children }: { children: React.ReactNode }) {
   return (
@@ -411,7 +435,7 @@ export default function Features() {
   const ActivePreview = previews[modules[active].id];
 
   return (
-    <section id="vantagens" className="landing-section py-16 md:py-20">
+    <section id="vantagens" className="py-16 md:py-20">
       <div className="mx-auto max-w-6xl px-6">
         <h2 className="text-center text-2xl font-bold text-navy-900 md:text-3xl">
           Módulos clínicos integrados
@@ -429,10 +453,8 @@ export default function Features() {
               <button
                 key={module.id}
                 type="button"
-                onMouseEnter={() => setActive(index)}
-                onFocus={() => setActive(index)}
                 onClick={() => setActive(index)}
-                className={`min-w-[160px] shrink-0 rounded-2xl border p-5 text-left transition-all duration-200 md:min-w-0 ${
+                className={`min-w-[160px] shrink-0 rounded-2xl border p-5 text-left transition-[border-color,background-color,box-shadow,color] duration-200 md:min-w-0 ${
                   isActive
                     ? "border-ocean-800 bg-ocean-800 text-white shadow-md shadow-ocean-900/20"
                     : "border-navy-900/8 bg-white text-navy-900 hover:border-ocean-200 hover:shadow-sm"

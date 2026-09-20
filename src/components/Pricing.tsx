@@ -2,7 +2,6 @@
 
 import { IconCheck } from "@/components/icons";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
 
 const reasons = [
   {
@@ -44,35 +43,10 @@ const plan = {
 };
 
 export default function Pricing() {
-  const sectionRef = useRef<HTMLElement>(null);
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const node = sectionRef.current;
-    if (!node) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setVisible(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.15 }
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <section
-      id="precos"
-      ref={sectionRef}
-      className={`landing-section py-16 md:py-20 ${visible ? "pricing-visible" : ""}`}
-    >
+    <section id="precos" className="py-16 md:py-20">
       <div className="mx-auto max-w-6xl px-6">
-        <div className="pricing-rise mx-auto max-w-2xl text-center">
+        <div className="mx-auto max-w-2xl text-center">
           <h2 className="text-2xl font-bold text-navy-900 md:text-3xl">
             Por que investir no MEDScript?
           </h2>
@@ -85,7 +59,7 @@ export default function Pricing() {
 
         <div className="mt-12 grid items-start gap-10 lg:grid-cols-2 lg:gap-12">
           <div className="space-y-6">
-            <p className="pricing-rise pricing-rise-1 text-sm leading-relaxed text-navy-800/70 md:text-base">
+            <p className="text-sm leading-relaxed text-navy-800/70 md:text-base">
               Cada minuto no plantão conta. Quando triagem, medicamentos, protocolos
               e plantões ficam separados, sobra atraso, retrabalho e ruído na
               comunicação. O MEDScript centraliza esse fluxo para você decidir
@@ -93,10 +67,10 @@ export default function Pricing() {
             </p>
 
             <ul className="space-y-4">
-              {reasons.map((reason, index) => (
+              {reasons.map((reason) => (
                 <li
                   key={reason.title}
-                  className={`pricing-rise pricing-rise-${index + 2} group rounded-2xl border border-ocean-100/80 bg-white p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-ocean-300 hover:shadow-md hover:shadow-ocean-900/10`}
+                  className="group rounded-2xl border border-ocean-100/80 bg-white p-4 shadow-sm transition-colors duration-200 hover:border-ocean-300"
                 >
                   <h3 className="text-sm font-semibold text-navy-900 transition-colors group-hover:text-ocean-800">
                     {reason.title}
@@ -109,7 +83,7 @@ export default function Pricing() {
             </ul>
           </div>
 
-          <div className="pricing-rise pricing-rise-6 lg:top-8 lg:self-start">
+          <div className="lg:top-8 lg:self-start">
             <div className="pricing-plan-card relative overflow-hidden rounded-3xl border border-ocean-200 bg-white">
               <div className="border-b border-ocean-100 bg-ocean-50/80 px-6 py-4 text-center">
                 <span className="inline-block rounded-full bg-ocean-800 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
@@ -147,7 +121,7 @@ export default function Pricing() {
 
                 <Link
                   href="/cadastro"
-                  className="pricing-cta mt-8 inline-block w-full rounded-full bg-ocean-800 py-3.5 text-sm font-semibold text-white transition-all duration-300 hover:scale-[1.02] hover:bg-ocean-700 active:scale-[0.98]"
+                  className="mt-8 inline-block w-full rounded-full bg-ocean-800 py-3.5 text-sm font-semibold text-white transition-colors hover:bg-ocean-700"
                 >
                   Iniciar avaliação gratuita de 14 dias
                 </Link>
