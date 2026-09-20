@@ -72,10 +72,12 @@ body {
 
 .hero-logo-glow {
   animation: hero-logo-glow 3s ease-in-out infinite;
+  animation-fill-mode: both;
 }
 
 .hero-logo-ring {
   animation: hero-logo-ring 2.6s ease-out infinite;
+  animation-fill-mode: backwards;
 }
 
 .hero-logo-ring-delay {
