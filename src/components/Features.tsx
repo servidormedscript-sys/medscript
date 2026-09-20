@@ -411,7 +411,7 @@ export default function Features() {
   const ActivePreview = previews[modules[active].id];
 
   return (
-    <section id="vantagens" className="py-16 md:py-20">
+    <section id="vantagens" className="landing-section py-16 md:py-20">
       <div className="mx-auto max-w-6xl px-6">
         <h2 className="text-center text-2xl font-bold text-navy-900 md:text-3xl">
           Módulos clínicos integrados

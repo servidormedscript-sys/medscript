@@ -69,7 +69,7 @@ export default function Pricing() {
     <section
       id="precos"
       ref={sectionRef}
-      className={`py-16 md:py-20 ${visible ? "pricing-visible" : ""}`}
+      className={`landing-section py-16 md:py-20 ${visible ? "pricing-visible" : ""}`}
     >
       <div className="mx-auto max-w-6xl px-6">
         <div className="pricing-rise mx-auto max-w-2xl text-center">
@@ -96,7 +96,7 @@ export default function Pricing() {
               {reasons.map((reason, index) => (
                 <li
                   key={reason.title}
-                  className={`pricing-rise pricing-rise-${index + 2} group rounded-2xl border border-ocean-100/80 bg-white/85 p-4 shadow-sm backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-ocean-300 hover:shadow-md hover:shadow-ocean-900/10`}
+                  className={`pricing-rise pricing-rise-${index + 2} group rounded-2xl border border-ocean-100/80 bg-white p-4 shadow-sm transition-[border-color,box-shadow,transform] duration-300 hover:-translate-y-0.5 hover:border-ocean-300 hover:shadow-md hover:shadow-ocean-900/10`}
                 >
                   <h3 className="text-sm font-semibold text-navy-900 transition-colors group-hover:text-ocean-800">
                     {reason.title}
@@ -109,19 +109,10 @@ export default function Pricing() {
             </ul>
           </div>
 
-          <div className="pricing-rise pricing-rise-6 lg:sticky lg:top-8">
+          <div className="pricing-rise pricing-rise-6 lg:top-8 lg:self-start">
             <div className="pricing-plan-card relative overflow-hidden rounded-3xl border border-ocean-200 bg-white">
-              <div
-                className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-ocean-200/30 blur-2xl"
-                aria-hidden="true"
-              />
-              <div
-                className="pointer-events-none absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-med-red/10 blur-2xl"
-                aria-hidden="true"
-              />
-
-              <div className="relative border-b border-ocean-100 bg-ocean-50/80 px-6 py-4 text-center">
-                <span className="inline-block rounded-full bg-ocean-800 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white transition-transform duration-300 hover:scale-105">
+              <div className="border-b border-ocean-100 bg-ocean-50/80 px-6 py-4 text-center">
+                <span className="inline-block rounded-full bg-ocean-800 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-white">
                   {plan.badge}
                 </span>
                 <h3 className="mt-3 text-2xl font-bold text-navy-900">
@@ -130,7 +121,7 @@ export default function Pricing() {
                 <p className="mt-2 text-sm text-navy-800/60">{plan.description}</p>
               </div>
 
-              <div className="relative px-6 py-6 text-center">
+              <div className="px-6 py-6 text-center">
                 <div className="inline-flex items-baseline gap-1">
                   <span className="text-4xl font-bold text-navy-900">
                     {plan.price}
@@ -146,8 +137,7 @@ export default function Pricing() {
                   {plan.features.map((feature, index) => (
                     <li
                       key={feature}
-                      className="flex items-start gap-3 text-sm text-navy-800/75 transition-all duration-300 hover:translate-x-1 hover:text-navy-900"
-                      style={{ transitionDelay: `${index * 20}ms` }}
+                      className="flex items-start gap-3 text-sm text-navy-800/75 transition-colors duration-200 hover:text-navy-900"
                     >
                       <IconCheck className="mt-0.5 h-4 w-4 shrink-0 text-ocean-800" />
                       {feature}

@@ -55,7 +55,7 @@ export default function Hero() {
           <div className="relative mx-auto flex w-full justify-center py-4 md:py-5">
             <div className="relative h-[280px] w-[280px] shrink-0 md:h-[340px] md:w-[340px]">
               <div
-                className="hero-logo-glow pointer-events-none absolute inset-0 rounded-full bg-med-red/40 shadow-[0_0_60px_20px_rgba(215,38,56,0.18)]"
+                className="hero-logo-glow pointer-events-none absolute inset-0 rounded-full bg-med-red/35 shadow-[0_0_40px_12px_rgba(215,38,56,0.12)]"
                 aria-hidden="true"
               />
               <div

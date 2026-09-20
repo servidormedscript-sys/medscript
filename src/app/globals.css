@@ -38,7 +38,7 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 body {
@@ -83,6 +83,34 @@ body {
 
 .hero-logo-ring-delay {
   animation-delay: 1.3s;
+}
+
+.landing-fx-layer {
+  contain: paint;
+  isolation: isolate;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-ecg-track,
+  .landing-float-slow,
+  .landing-pulse-ring,
+  .hero-logo-glow,
+  .hero-logo-ring,
+  .pricing-plan-card,
+  .pricing-trial-badge,
+  .pricing-cta,
+  .logo-glow-pulse {
+    animation: none !important;
+  }
+
+  .landing-ecg-track {
+    will-change: auto;
+  }
+}
+
+.landing-section {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 720px;
 }
 
 .landing-grid {
@@ -154,6 +182,7 @@ body {
 
 .landing-ecg-track {
   animation: ecg-track-scroll 22s linear infinite;
+  will-change: transform;
 }
 
 .landing-ecg-reverse {
@@ -242,7 +271,9 @@ body {
 }
 
 .pricing-plan-card {
-  animation: pricing-card-glow 5s ease-in-out infinite;
+  box-shadow:
+    0 4px 24px rgb(37 90 124 / 0.12),
+    0 0 0 1px rgb(61 136 173 / 0.06);
 }
 
 .pricing-trial-badge {
@@ -252,12 +283,10 @@ body {
     rgb(209 250 229) 45%,
     rgb(236 253 245) 100%
   );
-  background-size: 200% 200%;
-  animation: pricing-trial-shine 4s ease-in-out infinite;
 }
 
 .pricing-cta {
-  animation: pricing-cta-pulse 2.8s ease-in-out infinite;
+  box-shadow: 0 4px 14px rgb(37 90 124 / 0.2);
 }
 
 @keyframes auth-orbit {
