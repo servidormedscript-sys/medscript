@@ -52,21 +52,23 @@ export default function Hero() {
             </div>
           </div>
 
-          <div className="relative mx-auto flex min-h-[260px] w-full items-center justify-center py-4 md:min-h-[300px] md:py-5">
-            <div
-              className="hero-logo-glow pointer-events-none absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-med-red/40 shadow-[0_0_60px_20px_rgba(215,38,56,0.18)] md:h-[340px] md:w-[340px]"
-              aria-hidden="true"
-            />
-            <div
-              className="hero-logo-ring pointer-events-none absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-med-red/35 bg-med-red/15 md:h-[340px] md:w-[340px]"
-              aria-hidden="true"
-            />
-            <div
-              className="hero-logo-ring hero-logo-ring-delay pointer-events-none absolute left-1/2 top-1/2 h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-med-red/25 bg-med-red/10 md:h-[340px] md:w-[340px]"
-              aria-hidden="true"
-            />
-            <div className="relative z-10 flex justify-center">
-              <BrandLogo size="hero" priority />
+          <div className="relative mx-auto flex w-full justify-center py-4 md:py-5">
+            <div className="relative h-[280px] w-[280px] shrink-0 md:h-[340px] md:w-[340px]">
+              <div
+                className="hero-logo-glow pointer-events-none absolute inset-0 rounded-full bg-med-red/40 shadow-[0_0_60px_20px_rgba(215,38,56,0.18)]"
+                aria-hidden="true"
+              />
+              <div
+                className="hero-logo-ring pointer-events-none absolute inset-0 rounded-full border-2 border-med-red/35 bg-med-red/15"
+                aria-hidden="true"
+              />
+              <div
+                className="hero-logo-ring hero-logo-ring-delay pointer-events-none absolute inset-0 rounded-full border-2 border-med-red/25 bg-med-red/10"
+                aria-hidden="true"
+              />
+              <div className="relative z-10 flex h-full w-full items-center justify-center">
+                <BrandLogo size="hero" priority />
+              </div>
             </div>
           </div>
         </div>

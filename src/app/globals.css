@@ -50,32 +50,33 @@ body {
 @keyframes hero-logo-glow {
   0%,
   100% {
-    transform: translate(-50%, -50%) scale(1);
+    transform: scale(1);
     opacity: 0.45;
   }
   50% {
-    transform: translate(-50%, -50%) scale(1.12);
+    transform: scale(1.12);
     opacity: 0.72;
   }
 }
 
 @keyframes hero-logo-ring {
   0% {
-    transform: translate(-50%, -50%) scale(0.88);
+    transform: scale(0.88);
     opacity: 0.55;
   }
   100% {
-    transform: translate(-50%, -50%) scale(1.28);
+    transform: scale(1.28);
     opacity: 0;
   }
 }
 
 .hero-logo-glow {
+  transform-origin: center;
   animation: hero-logo-glow 3s ease-in-out infinite;
-  animation-fill-mode: both;
 }
 
 .hero-logo-ring {
+  transform-origin: center;
   animation: hero-logo-ring 2.6s ease-out infinite;
   animation-fill-mode: backwards;
 }
