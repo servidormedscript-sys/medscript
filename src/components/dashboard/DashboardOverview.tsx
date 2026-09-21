@@ -16,7 +16,7 @@ import {
 import { CLINICAL_PROTOCOLS } from "@/lib/clinical/protocols/catalog";
 import { KANBAN_COLUMNS } from "@/lib/types/patient";
 
-const QUICK_PROTOCOLS = ["pcr-adulto", "anafilaxia", "isr", "sca"] as const;
+const QUICK_PROTOCOLS = ["pcr-adulto", "anafilaxia", "isr", "sca-sem-supra-st"] as const;
 
 const cardClass = "rounded-lg border border-navy-900/8 bg-white p-5 shadow-sm";
 

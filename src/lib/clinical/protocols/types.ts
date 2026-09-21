@@ -51,7 +51,10 @@ export type ClinicalProtocol = {
   name: string;
   summary: string;
   keywords: string[];
+  /** Calculadora simples por peso/idade */
   hasDoseCalculator: boolean;
+  /** Módulo assistencial completo (cronômetro, checklists, condutas) */
+  hasInteractiveModule?: boolean;
 };
 
 export type ProtocolCategory = {

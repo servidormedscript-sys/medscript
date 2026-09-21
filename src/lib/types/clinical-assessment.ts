@@ -32,6 +32,11 @@ export type ClinicalSuggestion = {
   title: string;
   description: string;
   priority: "alta" | "media" | "baixa";
+  score?: number;
+  reasons?: string[];
+  badge?: "prioridade_alta" | "considerar" | "possivel";
+  protocolId?: string | null;
+  categoryId?: string | null;
 };
 
 export type ActivePatientEpisode = {

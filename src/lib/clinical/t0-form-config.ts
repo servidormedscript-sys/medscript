@@ -59,6 +59,7 @@ export const EXAM_SECTIONS: FormSection[] = [
   },
 ];
 
+/** ISDA — 44 itens em 11 sistemas (spec Meu Paciente Grave) */
 export const COMPLEMENTARY_SECTIONS: FormSection[] = [
   {
     id: "geral",
@@ -66,10 +67,8 @@ export const COMPLEMENTARY_SECTIONS: FormSection[] = [
     items: [
       { id: "febre_subjetiva", label: "Febre subjetiva" },
       { id: "calafrios", label: "Calafrios" },
-      { id: "sudorese_noturna", label: "Sudorese noturna" },
-      { id: "perda_peso", label: "Perda de peso não intencional" },
       { id: "fadiga", label: "Fadiga / astenia importante" },
-      { id: "anorexia", label: "Anorexia / inapetência" },
+      { id: "perda_peso", label: "Perda de peso não intencional" },
     ],
   },
   {
@@ -81,8 +80,6 @@ export const COMPLEMENTARY_SECTIONS: FormSection[] = [
       { id: "alteracao_visual", label: "Alteração visual aguda" },
       { id: "odinofagia", label: "Odinofagia (dor de garganta)" },
       { id: "disfagia", label: "Disfagia" },
-      { id: "otalgia", label: "Otalgia" },
-      { id: "epistaxe", label: "Epistaxe" },
     ],
   },
   {
@@ -111,7 +108,6 @@ export const COMPLEMENTARY_SECTIONS: FormSection[] = [
     items: [
       { id: "nausea_vomito", label: "Náuseas ou vômitos" },
       { id: "diarreia", label: "Diarreia" },
-      { id: "constipacao", label: "Constipação" },
       { id: "hematemese", label: "Hematemese" },
       { id: "melena", label: "Melena / hematoquezia" },
     ],
@@ -123,11 +119,8 @@ export const COMPLEMENTARY_SECTIONS: FormSection[] = [
       { id: "disuria", label: "Disúria" },
       { id: "hematuria", label: "Hematúria" },
       { id: "polaciuria", label: "Polaciúria / urgência miccional" },
-      { id: "corrimento", label: "Corrimento vaginal ou uretral anormal" },
       { id: "sangramento_vaginal", label: "Sangramento vaginal fora do padrão menstrual" },
       { id: "atraso_menstrual", label: "Atraso menstrual / possibilidade de gravidez" },
-      { id: "dor_escrotal", label: "Dor ou edema testicular/escrotal" },
-      { id: "lesao_genital", label: "Lesão genital" },
     ],
   },
   {
@@ -138,7 +131,6 @@ export const COMPLEMENTARY_SECTIONS: FormSection[] = [
       { id: "artralgia", label: "Artralgia" },
       { id: "edema_articular", label: "Edema articular" },
       { id: "dor_lombar", label: "Dor lombar" },
-      { id: "fraqueza_muscular", label: "Fraqueza muscular localizada" },
     ],
   },
   {
@@ -148,7 +140,6 @@ export const COMPLEMENTARY_SECTIONS: FormSection[] = [
       { id: "parestesias", label: "Parestesias" },
       { id: "tremor", label: "Tremor" },
       { id: "alteracao_marcha", label: "Alteração de marcha / equilíbrio" },
-      { id: "perda_memoria", label: "Perda de memória recente" },
     ],
   },
   {
@@ -178,10 +169,26 @@ export const COMPLEMENTARY_SECTIONS: FormSection[] = [
       { id: "poliuria", label: "Poliúria / polidipsia" },
       { id: "intolerancia_termica", label: "Intolerância ao calor ou frio" },
       { id: "sangramento_facil", label: "Sangramento fácil / equimoses espontâneas" },
-      { id: "linfonodos", label: "Linfonodos aumentados" },
     ],
   },
 ];
+
+export const ISDA_ITEM_COUNT = COMPLEMENTARY_SECTIONS.reduce(
+  (n, s) => n + s.items.length,
+  0
+);
+
+export function buildFindingLabelMap(): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const section of [...EXAM_SECTIONS, ...COMPLEMENTARY_SECTIONS]) {
+    for (const item of section.items) {
+      map[item.id] = item.label;
+    }
+  }
+  return map;
+}
+
+export const FINDING_LABELS = buildFindingLabelMap();
 
 export function buildEmptyChecklist(sections: FormSection[]) {
   return sections.reduce<Record<string, boolean>>((acc, section) => {
@@ -190,6 +197,25 @@ export function buildEmptyChecklist(sections: FormSection[]) {
     });
     return acc;
   }, {});
+}
+
+export function buildRosCopyText(complementary: Record<string, boolean>): string {
+  const lines: string[] = ["ISDA / ROS — revisão por sistemas:"];
+  for (const section of COMPLEMENTARY_SECTIONS) {
+    const active = section.items.filter((i) => complementary[i.id]);
+    if (active.length === 0) continue;
+    lines.push(`\n${section.title} (${active.length}):`);
+    active.forEach((i) => lines.push(`- ${i.label}`));
+  }
+  return lines.join("\n");
+}
+
+export function countRosBySection(complementary: Record<string, boolean>) {
+  return COMPLEMENTARY_SECTIONS.map((section) => ({
+    id: section.id,
+    title: section.title,
+    count: section.items.filter((i) => complementary[i.id]).length,
+  }));
 }
 
 export const ALL_EXAM_IDS = EXAM_SECTIONS.flatMap((s) => s.items.map((i) => i.id));

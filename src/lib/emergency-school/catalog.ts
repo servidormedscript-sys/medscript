@@ -139,7 +139,7 @@ export const EMERGENCY_SCHOOL_PHASES: SchoolPhase[] = [
           "Tratar convulsão prolongada com sequência medicamentosa",
         ],
         relatedProtocolCategoryId: "neurologia",
-        relatedProtocolIds: ["status-epilepticus"],
+        relatedProtocolIds: ["crise-convulsiva"],
       },
       {
         id: "sepse-metabolico",

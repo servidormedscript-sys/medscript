@@ -26,6 +26,8 @@ export async function POST(request: Request, context: RouteContext) {
     bed?: string;
     allergies?: string;
     medications?: string;
+    diagnosis?: string;
+    initial_assessment?: string;
   };
 
   try {
@@ -117,6 +119,10 @@ export async function POST(request: Request, context: RouteContext) {
     updateData.allergies = body.allergies?.trim() || null;
   if (body.medications !== undefined)
     updateData.medications = body.medications?.trim() || null;
+  if (body.diagnosis !== undefined)
+    updateData.diagnosis = body.diagnosis?.trim() || null;
+  if (body.initial_assessment !== undefined)
+    updateData.initial_assessment = body.initial_assessment?.trim() || null;
 
   const { data: updated, error: updateError } = await supabase
     .from("patient_episodes")

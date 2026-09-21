@@ -48,7 +48,7 @@ export default function VitalSignsForm({
           />
           {hasFever && (
             <p className="mt-1 text-xs font-medium text-red-700">
-              Febre detectada (≥ 37,8°C)
+              Febre detectada (≥ 38°C)
             </p>
           )}
         </div>

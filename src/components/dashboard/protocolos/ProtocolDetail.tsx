@@ -2,6 +2,10 @@
 
 import { useMemo, useState } from "react";
 import { calculateProtocol, hasCalculator } from "@/lib/clinical/protocols/calculators";
+import {
+  getInteractiveProtocol,
+  hasInteractiveProtocol,
+} from "@/lib/clinical/protocols/interactive/registry";
 import { validatePatientParams } from "@/lib/clinical/protocols/dose-utils";
 import type { ClinicalProtocol } from "@/lib/clinical/protocols/types";
 import PatientParamsForm from "./PatientParamsForm";
@@ -12,11 +16,18 @@ type ProtocolDetailProps = {
 };
 
 export default function ProtocolDetail({ protocol }: ProtocolDetailProps) {
+  const interactive = hasInteractiveProtocol(protocol.id);
+  const InteractiveModule = useMemo(
+    () => (interactive ? getInteractiveProtocol(protocol.id) : null),
+    [interactive, protocol.id]
+  );
+
   const [weightKg, setWeightKg] = useState("");
   const [ageYears, setAgeYears] = useState("");
   const [ageMonths, setAgeMonths] = useState("0");
 
-  const calculatorAvailable = hasCalculator(protocol.id);
+  const calculatorAvailable =
+    hasCalculator(protocol.id) && !interactive;
 
   const { result, error } = useMemo(() => {
     if (!calculatorAvailable) {
@@ -62,7 +73,14 @@ export default function ProtocolDetail({ protocol }: ProtocolDetailProps) {
             </span>
           ))}
         </div>
+        {interactive ? (
+          <p className="mt-4 rounded-lg bg-ocean-50 px-3 py-2 text-xs text-ocean-900">
+            Modo assistencial completo: cronômetros, ritmo, condutas e causas reversíveis.
+          </p>
+        ) : null}
       </section>
+
+      {InteractiveModule ? <InteractiveModule /> : null}
 
       {calculatorAvailable ? (
         <>
@@ -76,14 +94,16 @@ export default function ProtocolDetail({ protocol }: ProtocolDetailProps) {
           />
           <ProtocolDoseResults result={result} error={error} />
         </>
-      ) : (
+      ) : null}
+
+      {!interactive && !calculatorAvailable ? (
         <div className="rounded-lg border border-dashed border-navy-900/15 bg-white p-8 text-center">
           <p className="text-sm text-navy-800/65">
             Este protocolo ainda não possui calculadora automática de doses.
             Em breve será adicionado o conteúdo assistencial completo.
           </p>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

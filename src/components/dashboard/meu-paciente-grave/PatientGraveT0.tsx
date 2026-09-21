@@ -8,13 +8,13 @@ import {
   COMPLEMENTARY_SECTIONS,
   EXAM_SECTIONS,
 } from "@/lib/clinical/t0-form-config";
-import { generateSuggestions } from "@/lib/clinical/suggestion-rules";
+import { generateGraveScoring, buildInternacaoNoteFromGrave, type BaselineSnapshot } from "@/lib/clinical/suggestion-rules";
 import type {
   ActivePatientEpisode,
   VitalSigns,
 } from "@/lib/types/clinical-assessment";
 import { EMPTY_VITAL_SIGNS } from "@/lib/types/clinical-assessment";
-import { STATUS_LABELS } from "@/lib/types/patient";
+import { STATUS_LABELS, RISK_LABELS, type RiskLevel } from "@/lib/types/patient";
 import { formatAge } from "@/lib/utils/age";
 import StandaloneReportsPanel, {
   type StandaloneReport,
@@ -58,6 +58,8 @@ export default function PatientGraveT0() {
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [baseline, setBaseline] = useState<BaselineSnapshot | null>(null);
+  const [riskLevel, setRiskLevel] = useState<RiskLevel>("medio");
   const [savedSummary, setSavedSummary] = useState<string | null>(null);
 
   const [vitalSigns, setVitalSigns] = useState<VitalSigns>(EMPTY_VITAL_SIGNS);
@@ -102,9 +104,71 @@ export default function PatientGraveT0() {
     }
   }, [episodeFromUrl, loadingPatients, patients, standaloneMode, reportView]);
 
+  useEffect(() => {
+    if (!selectedId) {
+      setBaseline(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadBaseline() {
+      const res = await fetch(
+        `/api/paciente-grave/baseline?episode_id=${encodeURIComponent(selectedId)}`
+      );
+      if (cancelled) return;
+
+      if (res.ok) {
+        const data = await res.json();
+        if (data.baseline) {
+          setBaseline(data.baseline as BaselineSnapshot);
+          return;
+        }
+      }
+
+      if (typeof window !== "undefined") {
+        const raw = localStorage.getItem(`mpg-baseline-${selectedId}`);
+        if (raw) {
+          const parsed = JSON.parse(raw) as BaselineSnapshot;
+          setBaseline(parsed);
+          void fetch("/api/paciente-grave/baseline", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ episode_id: selectedId, baseline: parsed }),
+          }).then(() => localStorage.removeItem(`mpg-baseline-${selectedId}`));
+        } else {
+          setBaseline(null);
+        }
+      }
+    }
+
+    void loadBaseline();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
+
+  const scoring = useMemo(
+    () => generateGraveScoring(vitalSigns, findings),
+    [vitalSigns, findings]
+  );
+
   const suggestions = useMemo(
-    () => generateSuggestions(vitalSigns, findings, complementary),
-    [vitalSigns, findings, complementary]
+    () =>
+      scoring.suggestions.map((s) => ({
+        id: s.id,
+        title: s.title,
+        description: s.reasons.join(" · "),
+        priority:
+          s.badge === "prioridade_alta"
+            ? ("alta" as const)
+            : s.badge === "considerar"
+              ? ("media" as const)
+              : ("baixa" as const),
+        score: s.score,
+        reasons: s.reasons,
+      })),
+    [scoring]
   );
 
   function updateFinding(id: string, checked: boolean) {
@@ -295,6 +359,95 @@ export default function PatientGraveT0() {
     setMessage({ type: "success", text: "Laudo avulso atualizado." });
   }
 
+  async function saveBaselineSnapshot() {
+    if (!selectedId) return;
+    const snap: BaselineSnapshot = {
+      savedAt: new Date().toISOString(),
+      vital: vitalSigns,
+      findings,
+      topId: scoring.suggestions[0]?.id ?? null,
+      topScore: scoring.suggestions[0]?.score ?? 0,
+    };
+    const res = await fetch("/api/paciente-grave/baseline", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ episode_id: selectedId, baseline: snap }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setMessage({ type: "error", text: data.error ?? "Erro ao salvar linha de base." });
+      return;
+    }
+    setBaseline(snap);
+    setMessage({ type: "success", text: "Linha de base T0 salva para comparação." });
+  }
+
+  async function clearBaselineSnapshot() {
+    if (!selectedId) return;
+    const res = await fetch("/api/paciente-grave/baseline", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ episode_id: selectedId, baseline: null }),
+    });
+    if (res.ok) setBaseline(null);
+  }
+
+  async function handleInternar() {
+    if (!selectedId || standaloneMode) return;
+    const top = scoring.suggestions[0];
+    const diag = scoring.pcr
+      ? "PCR — Parada Cardiorrespiratória (suspeita — triagem Meu Paciente Grave)"
+      : top
+        ? `${top.title} (suspeita — triagem Meu Paciente Grave)`
+        : "";
+    const report = buildInternacaoNoteFromGrave({
+      findings,
+      complementary,
+      vital: vitalSigns,
+      topSuggestion: top
+        ? {
+            id: top.id,
+            title: top.title,
+            description: top.reasons.join(" · "),
+            priority: "alta",
+          }
+        : null,
+      pcr: scoring.pcr,
+    });
+    const vitalsLine = [
+      vitalSigns.temperature && `Temp ${vitalSigns.temperature}°C`,
+      vitalSigns.heart_rate && `FC ${vitalSigns.heart_rate}`,
+      vitalSigns.respiratory_rate && `FR ${vitalSigns.respiratory_rate}`,
+      vitalSigns.systolic_bp && `PAS ${vitalSigns.systolic_bp}`,
+      vitalSigns.spo2 && `SpO₂ ${vitalSigns.spo2}%`,
+      vitalSigns.blood_glucose && `Glicemia ${vitalSigns.blood_glucose}`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
+    setSaving(true);
+    const res = await fetch(`/api/pacientes/episodios/${selectedId}/mover`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        to_status: "internado",
+        risk_level: riskLevel,
+        diagnosis: diag || undefined,
+        initial_assessment: vitalsLine ? `Vitais (T0): ${vitalsLine}` : undefined,
+        report_text: `${diag ? `${diag}\n\n` : ""}${vitalsLine ? `Vitais: ${vitalsLine}\n\n` : ""}${report}`,
+        weight: vitalSigns.weight,
+      }),
+    });
+    const data = await res.json();
+    setSaving(false);
+    if (!res.ok) {
+      setMessage({ type: "error", text: data.error ?? "Não foi possível internar." });
+      return;
+    }
+    setMessage({ type: "success", text: "Paciente movido para internado." });
+    loadPatients();
+  }
+
   return (
     <div className="space-y-6">
       {reportView ? (
@@ -394,6 +547,22 @@ export default function PatientGraveT0() {
                   {selected.episode_number}
                 </p>
               )}
+              {selected && (
+                <label className="mt-3 block text-sm">
+                  Classificação de risco (internação)
+                  <select
+                    value={riskLevel}
+                    onChange={(e) => setRiskLevel(e.target.value as RiskLevel)}
+                    className="mt-1 rounded-md border px-3 py-2 text-sm"
+                  >
+                    {(Object.keys(RISK_LABELS) as RiskLevel[]).map((risk) => (
+                      <option key={risk} value={risk}>
+                        {RISK_LABELS[risk]}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
             </>
           )}
 
@@ -420,7 +589,12 @@ export default function PatientGraveT0() {
           onComplementaryChange={updateComplementary}
           showComplementary={showComplementary}
           onToggleComplementary={() => setShowComplementary((v) => !v)}
-          suggestions={suggestions}
+          scoring={scoring}
+          baseline={baseline}
+          onSaveBaseline={!standaloneMode && selectedId ? saveBaselineSnapshot : undefined}
+          onClearBaseline={baseline ? clearBaselineSnapshot : undefined}
+          onInternar={!standaloneMode && selectedId ? handleInternar : undefined}
+          internarDisabled={saving}
           message={message}
           savedSummary={formReadOnly ? null : savedSummary}
           actions={

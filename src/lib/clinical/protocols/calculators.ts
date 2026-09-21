@@ -573,7 +573,17 @@ const calculateDpoc: CalculatorFn = (params) => {
 
   return baseResult(
     params,
-    [],
+    [
+      {
+        title: "Exacerbação aguda",
+        items: [
+          "Salbutamol + ipratrópio repetidos na 1ª hora.",
+          "Corticoide sistêmico 5 dias.",
+          "Antibiótico se infecção bacteriana suspeita.",
+          "VNI se acidose respiratória sem indicação imediata de IOT.",
+        ],
+      },
+    ],
     [
       doseLine("Salbutamol", "2,5–5 mg", "Nebulização", {
         frequency: "A cada 20 min",

@@ -76,7 +76,7 @@ export const PROTOCOL_CATEGORIES: ProtocolCategory[] = [
   {
     id: "ferramentas",
     name: "Ferramentas",
-    description: "Escores clínicos e calculadoras auxiliares.",
+    description: "Utilitários transversais — gotejamento, renal, gaso, escores (complemento a todos os protocolos).",
     icon: "tool",
     accentClass: "bg-ocean-50 text-ocean-700",
     borderClass: "border-ocean-200",
