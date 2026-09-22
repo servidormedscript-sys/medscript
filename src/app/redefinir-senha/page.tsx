@@ -3,8 +3,9 @@ import ResetPasswordForm from "@/components/auth/ResetPasswordForm";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Redefinir senha — MEDScript",
+  title: "Redefinir senha",
   description: "Defina uma nova senha para sua conta MEDScript.",
+  robots: { index: false, follow: false },
 };
 
 export default function RedefinirSenhaPage() {

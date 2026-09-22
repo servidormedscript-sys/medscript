@@ -6,6 +6,15 @@ import ImpersonationBanner from "@/components/platform/ImpersonationBanner";
 import { requireSessionProfile, isAdmin } from "@/lib/auth/get-session-profile";
 import { getImpersonatedAdminId, isSuperAdmin } from "@/lib/platform/super-admin";
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: { index: false, follow: false },
+  },
+};
 
 export const dynamic = "force-dynamic";
 

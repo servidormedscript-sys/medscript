@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { MEDSCRIPT_LOGO_PATH } from "@/lib/branding";
+import { rootMetadata } from "@/lib/seo/default-metadata";
 import "./globals.css";
 
 const inter = Inter({
@@ -10,9 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "MEDScript — Gestão clínica",
-  description:
-    "Plataforma para prontuários, agendamentos e prescrições digitais. Desenvolvida para clínicas e consultórios médicos.",
+  ...rootMetadata,
   icons: {
     icon: MEDSCRIPT_LOGO_PATH,
     apple: MEDSCRIPT_LOGO_PATH,
