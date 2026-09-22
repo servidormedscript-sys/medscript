@@ -12,7 +12,8 @@
     "supabase:link": "supabase link --project-ref katepfoxlainldspmbfk",
     "supabase:migrations": "supabase migration list",
     "supabase:audit": "node scripts/audit-supabase-remote.mjs",
-    "supabase:hibp": "node scripts/enable-auth-hibp.mjs"
+    "supabase:hibp": "node scripts/enable-auth-hibp.mjs",
+    "supabase:email-templates": "node scripts/apply-supabase-email-templates.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
