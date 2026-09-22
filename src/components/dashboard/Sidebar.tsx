@@ -105,46 +105,46 @@ export default function Sidebar({
       />
 
       <div className="relative z-10 flex h-full min-h-0 flex-col">
-      <div className="relative shrink-0 border-b border-white/10 px-3 py-6">
+      <div className="relative shrink-0 border-b border-white/10 px-3 py-5">
         <Link
           href="/dashboard"
           className="sidebar-logo-link group mx-auto block w-full"
         >
-          <div className="mx-auto flex h-[5.75rem] w-full max-w-[13rem] items-center justify-center">
+          <div className="mx-auto flex h-[4.75rem] w-full max-w-[13rem] items-center justify-center">
             <BrandLogo
               size="sidebar"
               variant="white"
               glow
               priority
-              className="h-[4.75rem] w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"
+              className="h-[4rem] w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"
             />
           </div>
         </Link>
       </div>
 
-      <nav className="relative shrink-0 px-3 pb-2 pt-4">
-        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
-          Menu
-        </p>
-        <ul className="space-y-1">
-          {mainNav.map((item, index) => renderNavItem(item, index))}
-        </ul>
-      </nav>
-
-      {platformNav.length > 0 ? (
-        <nav className="relative shrink-0 border-t border-white/10 px-3 pb-2 pt-4">
+      <div className="sidebar-nav-scroll relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain px-3 pb-2 pt-3">
+        <nav className="relative">
           <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
-            Plataforma
+            Menu
           </p>
           <ul className="space-y-1">
-            {platformNav.map((item, index) => renderNavItem(item, index + mainNav.length))}
+            {mainNav.map((item, index) => renderNavItem(item, index))}
           </ul>
         </nav>
-      ) : null}
 
-      <div className="relative min-h-0 flex-1" aria-hidden="true" />
+        {platformNav.length > 0 ? (
+          <nav className="relative mt-4 border-t border-white/10 pt-4">
+            <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/35">
+              Plataforma
+            </p>
+            <ul className="space-y-1">
+              {platformNav.map((item, index) => renderNavItem(item, index + mainNav.length))}
+            </ul>
+          </nav>
+        ) : null}
+      </div>
 
-      <div className="relative mt-auto shrink-0 border-t border-white/10 px-3 py-3">
+      <div className="relative shrink-0 border-t border-white/10 px-3 py-3">
         <div
           className={`rounded-xl border bg-white/[0.04] p-3 transition-colors ${
             isProfilePage
