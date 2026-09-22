@@ -15,6 +15,12 @@ const AUTH_ERROR_MAP: Record<string, string> = {
     "Muitas tentativas. Aguarde alguns minutos e tente novamente.",
   "For security purposes, you can only request this once every 60 seconds":
     "Por segurança, aguarde 60 segundos antes de tentar novamente.",
+  "Error sending recovery email":
+    "Falha ao enviar o e-mail. Verifique o SMTP no Supabase (Authentication → SMTP) ou aguarde e tente de novo.",
+  "Error sending confirmation email":
+    "Falha ao enviar o e-mail de confirmação. Verifique o SMTP no Supabase.",
+  "535":
+    "Falha de autenticação SMTP. Confira usuário/senha (API key) do Resend no Supabase.",
 };
 
 export function translateAuthError(message: string) {
@@ -27,6 +33,12 @@ export function translateAuthError(message: string) {
   }
   if (lower.includes("email not confirmed")) {
     return "Confirme seu e-mail antes de entrar.";
+  }
+  if (lower.includes("redirect") && lower.includes("not allowed")) {
+    return "URL de retorno não autorizada. Adicione https://www.medscript.com.br/auth/callback no Supabase (Authentication → URL Configuration).";
+  }
+  if (lower.includes("error sending") || lower.includes("smtp")) {
+    return "Falha ao enviar e-mail. Revise SMTP em Supabase → Authentication → SMTP (host, API key Resend, remetente @medscript.com.br).";
   }
 
   return trimmed || "Não foi possível concluir a operação. Tente novamente.";

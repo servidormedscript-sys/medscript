@@ -33,8 +33,15 @@ export function getSupabaseEnvIssues() {
   return issues;
 }
 
+/** Prefer fallback when env aponta para localhost em produção. */
 export function getSiteUrl(fallback?: string) {
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (siteUrl) return siteUrl.replace(/\/$/, "");
-  return fallback?.replace(/\/$/, "") ?? "";
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, "");
+  if (
+    siteUrl?.startsWith("https://") &&
+    !siteUrl.includes("localhost") &&
+    !siteUrl.includes("127.0.0.1")
+  ) {
+    return siteUrl;
+  }
+  return fallback?.replace(/\/$/, "") ?? siteUrl ?? "";
 }

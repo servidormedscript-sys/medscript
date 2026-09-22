@@ -1,6 +1,5 @@
 "use client";
 
-import { createClient } from "@/lib/supabase/client";
 import { translateAuthError } from "@/lib/auth/translate-auth-error";
 import Link from "next/link";
 import { useState } from "react";
@@ -22,16 +21,19 @@ export default function RecoverPasswordForm() {
     setLoading(true);
 
     try {
-      const supabase = createClient();
-      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin;
-      const redirectTo = `${siteUrl}/auth/callback?next=/redefinir-senha`;
-
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo,
+      const res = await fetch("/api/auth/recover", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
       });
 
-      if (error) {
-        setMessage({ type: "error", text: translateAuthError(error.message) });
+      const data = (await res.json()) as { error?: string; success?: boolean };
+
+      if (!res.ok) {
+        setMessage({
+          type: "error",
+          text: data.error ?? translateAuthError("") ?? "Não foi possível enviar o e-mail.",
+        });
         return;
       }
 
@@ -40,10 +42,11 @@ export default function RecoverPasswordForm() {
         text: "Enviamos um link para redefinir sua senha. Verifique sua caixa de entrada e o spam.",
       });
       setEmail("");
-    } catch {
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : "";
       setMessage({
         type: "error",
-        text: "Não foi possível enviar o e-mail. Tente novamente.",
+        text: translateAuthError(detail) || "Falha de rede. Tente novamente.",
       });
     } finally {
       setLoading(false);
