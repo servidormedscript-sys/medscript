@@ -5,6 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { translateAuthError } from "@/lib/auth/translate-auth-error";
+import {
+  ACCOUNT_PASSWORD_HINT,
+  ACCOUNT_PASSWORD_MIN_LENGTH,
+  validateAccountPassword,
+} from "@/lib/auth/password-policy";
 
 type AuthMode = "login" | "register";
 
@@ -103,8 +108,9 @@ export default function AuthForm({ mode, compact = false }: AuthFormProps) {
       return;
     }
 
-    if (password.length < 6) {
-      setMessage({ type: "error", text: "A senha deve ter no mínimo 6 caracteres." });
+    const passwordError = validateAccountPassword(password);
+    if (passwordError) {
+      setMessage({ type: "error", text: passwordError });
       return;
     }
 
@@ -284,7 +290,7 @@ export default function AuthForm({ mode, compact = false }: AuthFormProps) {
               id="register-password"
               type="password"
               required
-              minLength={6}
+              minLength={ACCOUNT_PASSWORD_MIN_LENGTH}
               autoComplete="new-password"
               value={registerForm.password}
               onChange={(e) =>
@@ -295,6 +301,7 @@ export default function AuthForm({ mode, compact = false }: AuthFormProps) {
               }
               className={inputClass}
             />
+            <p className="mt-1 text-xs text-navy-800/55">{ACCOUNT_PASSWORD_HINT}</p>
           </div>
           <div>
             <label
@@ -307,7 +314,7 @@ export default function AuthForm({ mode, compact = false }: AuthFormProps) {
               id="register-confirm"
               type="password"
               required
-              minLength={6}
+              minLength={ACCOUNT_PASSWORD_MIN_LENGTH}
               autoComplete="new-password"
               value={registerForm.confirmPassword}
               onChange={(e) =>

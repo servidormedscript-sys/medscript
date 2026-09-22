@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import type { Organization, Profile, UserType } from "@/lib/types/profile";
 import { useClinicRealtime } from "@/hooks/useClinicRealtime";
 import { useConfirmDialog } from "@/hooks/useConfirmDialog";
+import {
+  ACCOUNT_PASSWORD_HINT,
+  ACCOUNT_PASSWORD_MIN_LENGTH,
+} from "@/lib/auth/password-policy";
 
 type TeamWithMembers = Organization & {
   organization_members: {
@@ -281,13 +285,14 @@ export default function OrganizacaoManager({ isAdmin }: OrganizacaoManagerProps)
                 <input
                   type="password"
                   required
-                  minLength={6}
+                  minLength={ACCOUNT_PASSWORD_MIN_LENGTH}
                   value={userForm.password}
                   onChange={(e) =>
                     setUserForm({ ...userForm, password: e.target.value })
                   }
                   className={inputClass}
                 />
+                <p className="mt-1 text-xs text-navy-800/55">{ACCOUNT_PASSWORD_HINT}</p>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-navy-800/70">

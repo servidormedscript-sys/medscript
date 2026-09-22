@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireSuperAdmin } from "@/lib/platform/require-super-admin";
+import { validateAccountPassword } from "@/lib/auth/password-policy";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -47,11 +48,12 @@ export async function PATCH(request: Request, context: RouteContext) {
       break;
     }
     case "update_password": {
-      if (!body.password || body.password.length < 6) {
-        return NextResponse.json(
-          { error: "A senha deve ter no mínimo 6 caracteres." },
-          { status: 400 }
-        );
+      if (!body.password) {
+        return NextResponse.json({ error: "Informe a senha." }, { status: 400 });
+      }
+      const passwordError = validateAccountPassword(body.password);
+      if (passwordError) {
+        return NextResponse.json({ error: passwordError }, { status: 400 });
       }
       const { error } = await admin.auth.admin.updateUserById(id, {
         password: body.password,

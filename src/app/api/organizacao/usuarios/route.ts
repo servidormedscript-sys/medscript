@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionWithAdmin } from "@/lib/api/require-session";
 import { getAdminFromRequest } from "@/lib/api/require-admin";
+import { validateAccountPassword } from "@/lib/auth/password-policy";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { UserType } from "@/lib/types/profile";
 
@@ -59,11 +60,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Tipo de usuário inválido." }, { status: 400 });
   }
 
-  if (password.length < 6) {
-    return NextResponse.json(
-      { error: "A senha deve ter no mínimo 6 caracteres." },
-      { status: 400 }
-    );
+  const passwordError = validateAccountPassword(password);
+  if (passwordError) {
+    return NextResponse.json({ error: passwordError }, { status: 400 });
   }
 
   try {

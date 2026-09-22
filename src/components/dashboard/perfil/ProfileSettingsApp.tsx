@@ -2,6 +2,10 @@
 
 import type { Profile } from "@/lib/types/profile";
 import { getProfileAvatarUrl } from "@/lib/profile/avatar";
+import {
+  ACCOUNT_PASSWORD_HINT,
+  ACCOUNT_PASSWORD_MIN_LENGTH,
+} from "@/lib/auth/password-policy";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
@@ -333,7 +337,7 @@ export default function ProfileSettingsApp({
               <input
                 type="password"
                 autoComplete="new-password"
-                minLength={6}
+                minLength={ACCOUNT_PASSWORD_MIN_LENGTH}
                 value={passwordForm.newPassword}
                 onChange={(e) =>
                   setPasswordForm({
@@ -343,6 +347,7 @@ export default function ProfileSettingsApp({
                 }
                 className={inputClass}
               />
+              <p className="mt-1 text-xs text-navy-800/55">{ACCOUNT_PASSWORD_HINT}</p>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-navy-800/70">
@@ -351,7 +356,7 @@ export default function ProfileSettingsApp({
               <input
                 type="password"
                 autoComplete="new-password"
-                minLength={6}
+                minLength={ACCOUNT_PASSWORD_MIN_LENGTH}
                 value={passwordForm.confirmPassword}
                 onChange={(e) =>
                   setPasswordForm({

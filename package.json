@@ -7,7 +7,12 @@
     "dev:clean": "node -e \"require('fs').rmSync('.next',{recursive:true,force:true})\" && next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "supabase:login": "supabase login",
+    "supabase:link": "supabase link --project-ref katepfoxlainldspmbfk",
+    "supabase:migrations": "supabase migration list",
+    "supabase:audit": "node scripts/audit-supabase-remote.mjs",
+    "supabase:hibp": "node scripts/enable-auth-hibp.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
@@ -24,6 +29,7 @@
     "@types/react-dom": "^19.1.5",
     "eslint": "^9.27.0",
     "eslint-config-next": "^15.3.2",
+    "supabase": "^2.117.0",
     "tailwindcss": "^4.1.7",
     "typescript": "^5.8.3"
   }

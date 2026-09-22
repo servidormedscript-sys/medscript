@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSessionWithAdmin } from "@/lib/api/require-session";
+import { validateAccountPassword } from "@/lib/auth/password-policy";
+import { translateAuthError } from "@/lib/auth/translate-auth-error";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: Request) {
@@ -23,11 +25,9 @@ export async function POST(request: Request) {
     );
   }
 
-  if (newPassword.length < 6) {
-    return NextResponse.json(
-      { error: "A nova senha deve ter no mínimo 6 caracteres." },
-      { status: 400 },
-    );
+  const passwordError = validateAccountPassword(newPassword);
+  if (passwordError) {
+    return NextResponse.json({ error: passwordError }, { status: 400 });
   }
 
   if (newPassword !== confirmPassword) {
@@ -56,7 +56,10 @@ export async function POST(request: Request) {
   });
 
   if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    return NextResponse.json(
+      { error: translateAuthError(updateError.message) },
+      { status: 400 },
+    );
   }
 
   return NextResponse.json({ success: true });

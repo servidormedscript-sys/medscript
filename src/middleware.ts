@@ -3,10 +3,14 @@ import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
   try {
-    return await updateSession(request);
+    const response = await updateSession(request);
+    response.headers.delete("Access-Control-Allow-Origin");
+    return response;
   } catch (error) {
     console.error("[middleware] Erro inesperado:", error);
-    return NextResponse.next({ request });
+    const response = NextResponse.next({ request });
+    response.headers.delete("Access-Control-Allow-Origin");
+    return response;
   }
 }
 

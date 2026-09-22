@@ -1,6 +1,12 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
+import {
+  ACCOUNT_PASSWORD_HINT,
+  ACCOUNT_PASSWORD_MIN_LENGTH,
+  validateAccountPassword,
+} from "@/lib/auth/password-policy";
+import { translateAuthError } from "@/lib/auth/translate-auth-error";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -33,8 +39,9 @@ export default function ResetPasswordForm() {
     e.preventDefault();
     setMessage(null);
 
-    if (password.length < 6) {
-      setMessage({ type: "error", text: "A senha deve ter no mínimo 6 caracteres." });
+    const passwordError = validateAccountPassword(password);
+    if (passwordError) {
+      setMessage({ type: "error", text: passwordError });
       return;
     }
 
@@ -50,7 +57,7 @@ export default function ResetPasswordForm() {
       const { error } = await supabase.auth.updateUser({ password });
 
       if (error) {
-        setMessage({ type: "error", text: error.message });
+        setMessage({ type: "error", text: translateAuthError(error.message) });
         return;
       }
 
@@ -108,12 +115,13 @@ export default function ResetPasswordForm() {
             id="new-password"
             type="password"
             required
-            minLength={6}
+            minLength={ACCOUNT_PASSWORD_MIN_LENGTH}
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className={inputClass}
           />
+          <p className="mt-1 text-xs text-navy-800/55">{ACCOUNT_PASSWORD_HINT}</p>
         </div>
         <div>
           <label
@@ -126,7 +134,7 @@ export default function ResetPasswordForm() {
             id="confirm-new-password"
             type="password"
             required
-            minLength={6}
+            minLength={ACCOUNT_PASSWORD_MIN_LENGTH}
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}

@@ -221,7 +221,9 @@ export default function PlatformAdminApp() {
                   <button
                     type="button"
                     onClick={async () => {
-                      const password = window.prompt("Nova senha (mín. 6 caracteres):");
+                      const password = window.prompt(
+                        "Nova senha (mín. 8 caracteres, maiúscula, minúscula e número):"
+                      );
                       if (!password) return;
                       patchUser(admin.id, { action: "update_password", password });
                     }}

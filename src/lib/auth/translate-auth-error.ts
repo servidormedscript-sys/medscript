@@ -3,7 +3,11 @@ const AUTH_ERROR_MAP: Record<string, string> = {
   "Email not confirmed": "Confirme seu e-mail antes de entrar.",
   "User already registered": "Este e-mail já está cadastrado.",
   "Password should be at least 6 characters":
-    "A senha deve ter no mínimo 6 caracteres.",
+    "A senha deve ter no mínimo 8 caracteres, com maiúscula, minúscula e número.",
+  "Password should be at least 8 characters":
+    "A senha deve ter no mínimo 8 caracteres, com maiúscula, minúscula e número.",
+  WeakPasswordError:
+    "Senha fraca. Use no mínimo 8 caracteres, com maiúscula, minúscula e número.",
   "Signup requires a valid password": "Informe uma senha válida.",
   "Unable to validate email address: invalid format":
     "Formato de e-mail inválido.",
