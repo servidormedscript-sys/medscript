@@ -71,6 +71,9 @@ export async function POST(request: Request) {
 
     const access = await assertAccountCanLogin(profile as Profile);
     if (!access.ok) {
+      if (access.reason === "expired" && (profile as Profile).role === "admin") {
+        return NextResponse.json({ ok: true, redirectTo: "/assinatura" });
+      }
       await supabase.auth.signOut();
       return NextResponse.json({ error: access.message }, { status: 403 });
     }

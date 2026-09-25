@@ -4,6 +4,8 @@ export type DashboardNavItem = {
   exact?: boolean;
   adminOnly?: boolean;
   superAdminOnly?: boolean;
+  excludeSuperAdmin?: boolean;
+  requiresPayments?: boolean;
 };
 
 export const dashboardNav: DashboardNavItem[] = [
@@ -19,6 +21,13 @@ export const dashboardNav: DashboardNavItem[] = [
   { href: "/dashboard/documentacoes", label: "Documentações" },
   { href: "/dashboard/agenda", label: "Agenda de Plantões" },
   { href: "/dashboard/ranking-resumo", label: "Ranking e Resumo" },
+  {
+    href: "/assinatura",
+    label: "Plano",
+    adminOnly: true,
+    excludeSuperAdmin: true,
+    requiresPayments: true,
+  },
   {
     href: "/dashboard/admin-plataforma",
     label: "Administração do site",

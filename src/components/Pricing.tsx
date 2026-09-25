@@ -1,6 +1,12 @@
 "use client";
 
 import { IconCheck } from "@/components/icons";
+import {
+  ANNUAL_PLAN,
+  MONTHLY_PLAN,
+  annualSavingsCents,
+  formatBrlFromCents,
+} from "@/lib/subscription/plans";
 import Link from "next/link";
 
 const reasons = [
@@ -25,8 +31,6 @@ const reasons = [
 const plan = {
   name: "Profissional",
   badge: "Plano completo",
-  price: "R$ 149",
-  period: "/ mês por clínica",
   trial: "14 dias de avaliação gratuita",
   description:
     "Acesso total à plataforma para administrador e sub-usuários da sua equipe, sem limite de módulos.",
@@ -98,9 +102,27 @@ export default function Pricing() {
               <div className="px-6 py-6 text-center">
                 <div className="inline-flex items-baseline gap-1">
                   <span className="text-4xl font-bold text-navy-900">
-                    {plan.price}
+                    {formatBrlFromCents(MONTHLY_PLAN.amountCents)}
                   </span>
-                  <span className="text-sm text-navy-800/55">{plan.period}</span>
+                  <span className="text-sm text-navy-800/55">/ mês por clínica</span>
+                </div>
+                <p className="mt-1 text-sm text-navy-800/55">
+                  cartão com renovação automática ou Pix/boleto avulso
+                </p>
+
+                <div className="mt-4 rounded-2xl border border-ocean-100 bg-ocean-50/60 px-4 py-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-ocean-800">
+                    ou plano anual
+                  </p>
+                  <p className="mt-1 text-2xl font-bold text-navy-900">
+                    {formatBrlFromCents(ANNUAL_PLAN.amountCents)}
+                    <span className="ml-1 text-sm font-normal text-navy-800/55">
+                      / 365 dias
+                    </span>
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-emerald-800">
+                    Economize {formatBrlFromCents(annualSavingsCents())} em relação a 12 meses.
+                  </p>
                 </div>
 
                 <p className="pricing-trial-badge mt-4 rounded-xl border border-emerald-200 px-4 py-2.5 text-sm font-medium text-emerald-900">
@@ -108,7 +130,7 @@ export default function Pricing() {
                 </p>
 
                 <ul className="mt-6 space-y-3 text-left">
-                  {plan.features.map((feature, index) => (
+                  {plan.features.map((feature) => (
                     <li
                       key={feature}
                       className="flex items-start gap-3 text-sm text-navy-800/75 transition-colors duration-200 hover:text-navy-900"
@@ -127,8 +149,8 @@ export default function Pricing() {
                 </Link>
 
                 <p className="mt-4 text-xs leading-relaxed text-navy-800/45">
-                  Cancele quando quiser. Depois do teste, a cobrança é mensal e
-                  você mantém todo o histórico da clínica.
+                  Depois do teste: assinatura no cartão (renova sozinha) ou pagamento único com
+                  Pix, boleto ou cartão no Mercado Pago.
                 </p>
               </div>
             </div>

@@ -2,11 +2,14 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
+  canPurchasePlan,
   formatAccessWarning,
   getAccessEndsAt,
   getDaysRemaining,
+  isInFreeTrialPeriod,
   shouldShowRenewalWarning,
 } from "@/lib/subscription/access";
+import { isPaymentsEnabled } from "@/lib/billing/payments-enabled";
 import { loadSubscriptionForProfile } from "@/lib/platform/account-access";
 import type { Profile } from "@/lib/types/profile";
 
@@ -46,6 +49,14 @@ export async function GET() {
     complimentary: subscription?.complimentary_access ?? false,
     showWarning: shouldShowRenewalWarning(subscription),
     warningMessage:
-      daysRemaining !== null ? formatAccessWarning(daysRemaining) : null,
+      daysRemaining !== null
+        ? formatAccessWarning(daysRemaining, subscription)
+        : null,
+    canRenew:
+      (profile as Profile).role === "admin" && canPurchasePlan(subscription),
+    inFreeTrial: isInFreeTrialPeriod(subscription),
+    canPurchase: canPurchasePlan(subscription),
+    trialEndsAt: subscription?.trial_ends_at ?? null,
+    paymentsEnabled: isPaymentsEnabled(),
   });
 }

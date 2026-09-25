@@ -28,12 +28,22 @@ export default function HomeJsonLd() {
     name: "MEDScript",
     applicationCategory: "HealthApplication",
     operatingSystem: "Web",
-    offers: {
-      "@type": "Offer",
-      price: "0",
-      priceCurrency: "BRL",
-      description: "Período de teste disponível no cadastro.",
-    },
+    offers: [
+      {
+        "@type": "Offer",
+        name: "Plano mensal",
+        price: "29.90",
+        priceCurrency: "BRL",
+        description: "30 dias de acesso por clínica, após 14 dias de avaliação.",
+      },
+      {
+        "@type": "Offer",
+        name: "Plano anual",
+        price: "249.00",
+        priceCurrency: "BRL",
+        description: "365 dias de acesso por clínica.",
+      },
+    ],
     url: siteUrl,
   };
 

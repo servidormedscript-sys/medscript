@@ -70,6 +70,13 @@ export default function SidebarNavIcon({ href, active = false }: SidebarNavIconP
           <path d="M4 19h16" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
         </svg>
       );
+    case "/assinatura":
+      return (
+        <svg className={`h-[18px] w-[18px] shrink-0 ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="3" y="6" width="18" height="12" rx="2" stroke="currentColor" strokeWidth="1.75" />
+          <path d="M3 10h18" stroke="currentColor" strokeWidth="1.75" />
+        </svg>
+      );
     case "/dashboard/admin-plataforma":
       return (
         <svg className={`h-[18px] w-[18px] shrink-0 ${className}`} viewBox="0 0 24 24" fill="none" aria-hidden="true">

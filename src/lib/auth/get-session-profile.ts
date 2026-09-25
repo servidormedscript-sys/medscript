@@ -34,6 +34,9 @@ export async function requireSessionProfile() {
   if (profile) {
     const access = await assertAccountCanLogin(profile);
     if (!access.ok) {
+      if (access.reason === "expired" && profile.role === "admin") {
+        redirect("/assinatura");
+      }
       redirect("/login?error=acesso");
     }
   }

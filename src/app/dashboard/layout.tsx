@@ -5,6 +5,7 @@ import SubscriptionWarningBanner from "@/components/dashboard/SubscriptionWarnin
 import ImpersonationBanner from "@/components/platform/ImpersonationBanner";
 import { requireSessionProfile, isAdmin } from "@/lib/auth/get-session-profile";
 import { getImpersonatedAdminId, isSuperAdmin } from "@/lib/platform/super-admin";
+import { isPaymentsEnabled } from "@/lib/billing/payments-enabled";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Metadata } from "next";
 
@@ -43,6 +44,7 @@ export default async function DashboardLayout({
       <Sidebar
         isAdmin={isAdmin(profile)}
         isSuperAdmin={isSuperAdmin(profile)}
+        paymentsEnabled={isPaymentsEnabled()}
         profile={profile}
         userEmail={user.email}
       />

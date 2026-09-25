@@ -6,6 +6,7 @@ import {
   getImpersonatedAdminId,
   isSuperAdmin,
 } from "@/lib/platform/super-admin";
+import { assertAccountCanLogin } from "@/lib/platform/account-access";
 import type { Profile } from "@/lib/types/profile";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -61,6 +62,15 @@ export async function getSessionWithAdmin(): Promise<SessionWithAdmin> {
     adminId = impersonateAdminId;
     dataClient = createAdminClient();
     isImpersonating = true;
+  }
+
+  if (!superAdmin) {
+    const access = await assertAccountCanLogin(typedProfile);
+    if (!access.ok) {
+      return {
+        error: NextResponse.json({ error: access.message }, { status: 403 }),
+      };
+    }
   }
 
   return {

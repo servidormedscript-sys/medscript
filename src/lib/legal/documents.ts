@@ -63,15 +63,16 @@ export const legalDocuments: Record<string, LegalDocument> = {
       {
         heading: "2. Plano e preço",
         paragraphs: [
-          "O plano Profissional é cobrado mensalmente por clínica, conforme valor divulgado no site no momento da contratação.",
+          "O plano Profissional custa R$ 29,90 por 30 dias ou R$ 249,00 por 365 dias, por clínica, conforme divulgado no site no momento da contratação.",
           "Novos cadastros podem usufruir de 14 dias de avaliação gratuita, sem cobrança nesse período, salvo comunicação em contrário.",
         ],
       },
       {
         heading: "3. Pagamento",
         paragraphs: [
-          "Após o período de avaliação, a cobrança é recorrente e mensal. O não pagamento pode resultar em suspensão do acesso até a regularização.",
-          "Alterações de preço serão comunicadas com antecedência razoável antes de passarem a valer para ciclos futuros.",
+          "Após o período de avaliação, o plano pode ser contratado pelo Mercado Pago de duas formas: assinatura com renovação automática no cartão (mensal R$ 29,90 ou anual R$ 249,00) ou pagamento único com Pix, boleto ou cartão pelo mesmo valor e período (30 ou 365 dias), sem renovação automática. Cada cobrança aprovada soma dias ao saldo da clínica. O cancelamento da assinatura impede novas cobranças recorrentes; o acesso permanece até o fim dos dias já pagos.",
+          "Para processar a cobrança, nome, e-mail e identificador da conta são compartilhados com o Mercado Pago.",
+          "Alterações de preço serão comunicadas com antecedência razoável antes de passarem a valer para novos ciclos.",
         ],
       },
       {
@@ -158,24 +159,41 @@ export const legalDocuments: Record<string, LegalDocument> = {
       {
         heading: "2. Cancelamento da assinatura",
         paragraphs: [
-          "Após a avaliação, o cancelamento pode ser solicitado a qualquer momento pelos canais oficiais ou configurações da conta, quando disponíveis.",
-          "O cancelamento impede novas cobranças a partir do ciclo seguinte, salvo valores já processados. O acesso permanece até o fim do período já pago.",
+          "Após a avaliação, você pode cancelar a renovação automática no cartão a qualquer momento na área Plano do painel (botão “Cancelar renovação automática”) ou pelos canais do Mercado Pago.",
+          "O cancelamento impede novas cobranças recorrentes. O acesso permanece até o fim dos dias já pagos.",
+          "O MEDScript não armazena dados completos de cartão de crédito. O cadastro do cartão e a tokenização ficam sob responsabilidade do Mercado Pago. Para remover o cartão salvo, use a conta do pagador no Mercado Pago.",
         ],
       },
       {
-        heading: "3. Dados após cancelamento",
+        heading: "3. Pix, boleto e liberação de acesso",
+        paragraphs: [
+          "Pagamentos únicos com Pix, boleto ou cartão são processados pelo Mercado Pago. Quando o pagamento é aprovado, o sistema soma automaticamente os dias contratados ao saldo da clínica.",
+          "Pix e cartão costumam ser confirmados em poucos minutos. Boleto bancário pode levar até 3 dias úteis (ou mais em feriados) para compensar; até a confirmação pelo Mercado Pago, o status permanece pendente e o acesso só é ampliado após a aprovação.",
+          "A confirmação ocorre por retorno do checkout e por notificações (webhook) do Mercado Pago, sem necessidade de ação manual da equipe MEDScript.",
+        ],
+      },
+      {
+        heading: "4. Reembolso",
+        paragraphs: [
+          "Pedidos de reembolso de valores já pagos devem ser solicitados pelos canais oficiais de suporte em até 7 (sete) dias corridos a contar da data da cobrança aprovada.",
+          "Após esse prazo, não há reembolso automático de mensalidades ou planos anuais já creditados, salvo determinação legal ou acordo expresso.",
+          "Estornos seguem os prazos e regras do meio de pagamento (Mercado Pago) e da instituição financeira.",
+        ],
+      },
+      {
+        heading: "5. Dados após cancelamento",
         paragraphs: [
           "Recomendamos exportar fichas e documentos importantes antes do encerramento. Após o cancelamento, os dados podem ser mantidos por prazo limitado para backup e obrigações legais, sendo depois eliminados ou anonimizados conforme política interna.",
         ],
       },
       {
-        heading: "4. Reativação",
+        heading: "6. Reativação",
         paragraphs: [
           "Contas canceladas podem ser reativadas mediante nova contratação, sujeita à disponibilidade dos dados remanescentes no prazo de retenção.",
         ],
       },
       {
-        heading: "5. Suspensão por inadimplência",
+        heading: "7. Suspensão por inadimplência",
         paragraphs: [
           "Falta de pagamento pode levar à suspensão temporária do acesso. Persistindo a inadimplência, a conta pode ser encerrada após comunicação prévia.",
         ],

@@ -1,3 +1,4 @@
+import { isPaymentsEnabled } from "@/lib/billing/payments-enabled";
 import type { Profile } from "@/lib/types/profile";
 
 export type SubscriptionRow = {
@@ -8,6 +9,9 @@ export type SubscriptionRow = {
   paid_days_total: number;
   complimentary_access: boolean;
   complimentary_note: string | null;
+  mp_preapproval_id: string | null;
+  recurring_plan_code: string | null;
+  mp_subscription_status: string | null;
 };
 
 export function getAccessEndsAt(subscription: SubscriptionRow | null) {
@@ -26,6 +30,9 @@ export function hasPlatformAccess(
   profile: Profile,
   subscription: SubscriptionRow | null
 ) {
+  if (!isPaymentsEnabled()) {
+    return profile.account_status === "active";
+  }
   if (profile.platform_role === "super_admin") return true;
   if (profile.account_status !== "active") return false;
   if (subscription?.complimentary_access) return true;
@@ -36,14 +43,48 @@ export function hasPlatformAccess(
   return new Date(endsAt).getTime() > Date.now();
 }
 
-export function shouldShowRenewalWarning(subscription: SubscriptionRow | null) {
+/** Avaliação gratuita de 14 dias — ainda sem pagamento confirmado. */
+export function isInFreeTrialPeriod(subscription: SubscriptionRow | null) {
   if (!subscription || subscription.complimentary_access) return false;
-  const days = getDaysRemaining(getAccessEndsAt(subscription));
+  if ((subscription.paid_days_total ?? 0) > 0) return false;
+  if (subscription.mp_subscription_status === "authorized") return false;
+  const trialEnd = subscription.trial_ends_at;
+  if (!trialEnd) return false;
+  return new Date(trialEnd).getTime() > Date.now();
+}
+
+export function canPurchasePlan(subscription: SubscriptionRow | null) {
+  if (!isPaymentsEnabled()) return false;
+  if (!subscription || subscription.complimentary_access) return false;
+  return !isInFreeTrialPeriod(subscription);
+}
+
+export function shouldShowRenewalWarning(subscription: SubscriptionRow | null) {
+  if (!isPaymentsEnabled()) return false;
+  if (!subscription || subscription.complimentary_access) return false;
+  const endsAt = getAccessEndsAt(subscription);
+  const days = getDaysRemaining(endsAt);
   if (days === null) return false;
+  if (isInFreeTrialPeriod(subscription)) {
+    return days <= 2;
+  }
   return days <= 2;
 }
 
-export function formatAccessWarning(days: number) {
+export function formatAccessWarning(
+  days: number,
+  subscription?: SubscriptionRow | null
+) {
+  const inTrial = subscription && isInFreeTrialPeriod(subscription);
+  if (inTrial) {
+    if (days <= 0) {
+      return "Sua avaliação gratuita encerrou. Contrate um plano para continuar usando o MEDScript.";
+    }
+    if (days === 1) {
+      return "Sua avaliação gratuita termina amanhã. Depois disso será necessário contratar um plano.";
+    }
+    return `Sua avaliação gratuita termina em ${days} dias.`;
+  }
   if (days <= 0) {
     return "Seu plano encerrou. Renove para continuar usando o MEDScript.";
   }

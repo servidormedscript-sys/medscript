@@ -11,6 +11,7 @@ import { dashboardNav } from "@/lib/dashboard/nav";
 type SidebarProps = {
   isAdmin: boolean;
   isSuperAdmin: boolean;
+  paymentsEnabled: boolean;
   profile: Profile | null;
   userEmail?: string | null;
 };
@@ -39,6 +40,7 @@ function getRoleLabel(
 export default function Sidebar({
   isAdmin,
   isSuperAdmin,
+  paymentsEnabled,
   profile,
   userEmail,
 }: SidebarProps) {
@@ -46,7 +48,10 @@ export default function Sidebar({
 
   const mainNav = dashboardNav.filter(
     (item) =>
-      !item.superAdminOnly && (!item.adminOnly || isAdmin),
+      !item.superAdminOnly &&
+      (!item.adminOnly || isAdmin) &&
+      !(item.excludeSuperAdmin && isSuperAdmin) &&
+      !(item.requiresPayments && !paymentsEnabled),
   );
   const platformNav = dashboardNav.filter(
     (item) => item.superAdminOnly && isSuperAdmin,
