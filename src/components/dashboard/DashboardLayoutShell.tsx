@@ -62,7 +62,7 @@ export default function DashboardLayoutShell({
         onNavigate={() => setNavOpen(false)}
       />
 
-      <div className="flex min-h-dvh min-w-0 flex-1 flex-col lg:ml-64">
+      <div className="flex min-h-dvh min-w-0 flex-1 flex-col lg:ml-[calc(18rem+1rem)]">
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-navy-900/8 bg-white/95 px-4 py-2.5 backdrop-blur-sm pt-[max(0.625rem,env(safe-area-inset-top))] lg:hidden">
           <button
             type="button"
