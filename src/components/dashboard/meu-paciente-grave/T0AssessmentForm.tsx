@@ -148,7 +148,7 @@ export default function T0AssessmentForm({
             {complementary.ideacao_suicida && (
               <div className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-900">
                 Ideação suicida marcada —{" "}
-                <Link href="/dashboard/protocolos-clinicos?category=saude-mental&protocol=risco-suicidio" className="font-semibold underline">
+                <Link href="/dashboard/protocolos-clinicos?category=saude-mental-uti&protocol=risco-suicidio" className="font-semibold underline">
                   Risco de suicídio
                 </Link>
               </div>

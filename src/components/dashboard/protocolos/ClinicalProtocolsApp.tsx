@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { PROTOCOL_CATEGORIES } from "@/lib/clinical/protocols/categories";
+import {
+  PROTOCOL_CATEGORIES,
+  resolveProtocolCategoryId,
+} from "@/lib/clinical/protocols/categories";
 import {
   CLINICAL_PROTOCOLS,
   getCategoryProtocolCount,
@@ -28,17 +31,19 @@ export default function ClinicalProtocolsApp() {
     const categoryId = searchParams.get("category");
     const protocolId = searchParams.get("protocol");
 
-    if (categoryId && protocolId) {
-      const protocol = CLINICAL_PROTOCOLS.find(
-        (item) => item.id === protocolId && item.categoryId === categoryId
-      );
+    if (protocolId) {
+      const protocol = CLINICAL_PROTOCOLS.find((item) => item.id === protocolId);
       if (protocol) {
-        setView({ type: "protocol", categoryId, protocolId });
+        setView({
+          type: "protocol",
+          categoryId: protocol.categoryId,
+          protocolId,
+        });
       }
     } else if (categoryId) {
-      const category = PROTOCOL_CATEGORIES.find((item) => item.id === categoryId);
-      if (category) {
-        setView({ type: "category", categoryId });
+      const resolved = resolveProtocolCategoryId(categoryId);
+      if (resolved) {
+        setView({ type: "category", categoryId: resolved });
       }
     }
   }, [searchParams]);

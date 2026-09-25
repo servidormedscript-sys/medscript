@@ -137,7 +137,7 @@ function ruleAvc(ctx: GraveScoringContext): GraveRuleResult {
     score: b.score,
     reasons: b.reasons,
     protocolId: "avc",
-    categoryId: "neurologia",
+    categoryId: "clinica-aguda",
   };
 }
 
@@ -158,7 +158,7 @@ function ruleMeningite(ctx: GraveScoringContext): GraveRuleResult {
     score: b.score,
     reasons: b.reasons,
     protocolId: "meningite",
-    categoryId: "neurologia",
+    categoryId: "clinica-aguda",
   };
 }
 
@@ -184,7 +184,7 @@ function ruleTep(ctx: GraveScoringContext): GraveRuleResult {
     score: b.score,
     reasons: b.reasons,
     protocolId: "tep",
-    categoryId: "respiratorio",
+    categoryId: "clinica-aguda",
   };
 }
 
@@ -203,7 +203,7 @@ function ruleAbdome(ctx: GraveScoringContext): GraveRuleResult {
     score: b.score,
     reasons: b.reasons,
     protocolId: "abdome-agudo",
-    categoryId: "gastroenterologia",
+    categoryId: "clinica-aguda",
   };
 }
 
@@ -315,7 +315,7 @@ function ruleCeto(ctx: GraveScoringContext): GraveRuleResult {
     score: b.score,
     reasons: b.reasons,
     protocolId: "cad",
-    categoryId: "metabolico",
+    categoryId: "clinica-aguda",
   };
 }
 
@@ -337,7 +337,7 @@ function ruleAsma(ctx: GraveScoringContext): GraveRuleResult {
     score: b.score,
     reasons: b.reasons,
     protocolId: "asma",
-    categoryId: "respiratorio",
+    categoryId: "clinica-aguda",
   };
 }
 
@@ -359,7 +359,7 @@ function ruleConvulsao(ctx: GraveScoringContext): GraveRuleResult {
     score: b.score,
     reasons: b.reasons,
     protocolId: "crise-convulsiva",
-    categoryId: "neurologia",
+    categoryId: "clinica-aguda",
   };
 }
 
@@ -381,7 +381,7 @@ function ruleRebaix(ctx: GraveScoringContext): GraveRuleResult {
     score: b.score,
     reasons: b.reasons,
     protocolId: "rebaixamento-consciencia",
-    categoryId: "neurologia",
+    categoryId: "clinica-aguda",
   };
 }
 

@@ -87,7 +87,7 @@ export const EMERGENCY_SCHOOL_PHASES: SchoolPhase[] = [
           "Reconhecer indicações de via aérea avançada precoce",
           "Antecipar preparo para intubação ou via alternativa",
         ],
-        relatedProtocolCategoryId: "respiratorio",
+        relatedProtocolCategoryId: "clinica-aguda",
       },
       {
         id: "choque-ressuscitacao-volemica",
@@ -138,7 +138,7 @@ export const EMERGENCY_SCHOOL_PHASES: SchoolPhase[] = [
           "Acionar fluxo de neurovascular precocemente",
           "Tratar convulsão prolongada com sequência medicamentosa",
         ],
-        relatedProtocolCategoryId: "neurologia",
+        relatedProtocolCategoryId: "clinica-aguda",
         relatedProtocolIds: ["crise-convulsiva"],
       },
       {
@@ -153,7 +153,7 @@ export const EMERGENCY_SCHOOL_PHASES: SchoolPhase[] = [
           "Tratar hipoglicemia e cetoacidose de forma segura",
           "Monitorar resposta e complicações do tratamento",
         ],
-        relatedProtocolCategoryId: "metabolico",
+        relatedProtocolCategoryId: "clinica-aguda",
       },
     ],
   },

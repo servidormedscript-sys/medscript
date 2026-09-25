@@ -1,13 +1,8 @@
 export type ProtocolCategoryId =
   | "emergencia"
   | "cardiologia"
-  | "neurologia"
-  | "respiratorio"
-  | "metabolico"
-  | "gastroenterologia"
-  | "obstetricia"
-  | "saude-mental"
-  | "manejo-uti"
+  | "clinica-aguda"
+  | "saude-mental-uti"
   | "ferramentas";
 
 export type PatientParams = {

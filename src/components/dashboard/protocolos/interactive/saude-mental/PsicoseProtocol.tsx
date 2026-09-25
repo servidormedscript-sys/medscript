@@ -35,7 +35,7 @@ export default function PsicoseProtocol() {
         <DangerBanner title="Investigar causa orgânica">
           Glicemia, eletrólitos, função hepática/renal, TSH, neuroimagem; considerar encefalite autoimune.
           <Link
-            href="/dashboard/protocolos-clinicos?category=neurologia&protocol=rebaixamento-consciencia"
+            href="/dashboard/protocolos-clinicos?category=clinica-aguda&protocol=rebaixamento-consciencia"
             className="mt-2 block text-sm font-semibold text-red-800 underline"
           >
             Rebaixamento de consciência

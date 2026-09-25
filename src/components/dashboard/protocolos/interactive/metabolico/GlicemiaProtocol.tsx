@@ -135,7 +135,7 @@ export default function GlicemiaProtocol() {
           </p>
         )}
         {clf === "hiper_grave" && (
-          <Link href="/dashboard/protocolos-clinicos?category=metabolico&protocol=cad" className="mt-2 inline-block text-sm text-ocean-800 underline">
+          <Link href="/dashboard/protocolos-clinicos?category=clinica-aguda&protocol=cad" className="mt-2 inline-block text-sm text-ocean-800 underline">
             Abrir Cetoacidose Diabética
           </Link>
         )}

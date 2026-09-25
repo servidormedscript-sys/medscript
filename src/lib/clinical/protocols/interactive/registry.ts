@@ -41,6 +41,8 @@ import PcrPediatriaProtocol from "@/components/dashboard/protocolos/interactive/
 import MeningiteProtocol from "@/components/dashboard/protocolos/interactive/neurologia/MeningiteProtocol";
 import DpocProtocol from "@/components/dashboard/protocolos/interactive/respiratorio/DpocProtocol";
 import IntoxicacaoProtocol from "@/components/dashboard/protocolos/interactive/saude-mental/IntoxicacaoProtocol";
+import PeconhentosProtocol from "@/components/dashboard/protocolos/interactive/emergencia/PeconhentosProtocol";
+import HemotransfusaoProtocol from "@/components/dashboard/protocolos/interactive/emergencia/HemotransfusaoProtocol";
 import CrisePanicoProtocol from "@/components/dashboard/protocolos/interactive/saude-mental/CrisePanicoProtocol";
 import SedacaoProtocol from "@/components/dashboard/protocolos/interactive/manejo-uti/SedacaoProtocol";
 
@@ -82,6 +84,8 @@ export const INTERACTIVE_PROTOCOLS: Record<string, ComponentType> = {
   "abstinencia-alcoolica": AbstinenciaProtocol,
   "psicose-aguda": PsicoseProtocol,
   intoxicacao: IntoxicacaoProtocol,
+  "animais-peconhentos": PeconhentosProtocol,
+  hemotransfusao: HemotransfusaoProtocol,
   "crise-panico": CrisePanicoProtocol,
   delirium: DeliriumProtocol,
   "dor-escada-analgesica": DorProtocol,

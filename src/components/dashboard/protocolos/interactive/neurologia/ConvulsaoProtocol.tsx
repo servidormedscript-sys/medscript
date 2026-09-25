@@ -128,7 +128,7 @@ export default function ConvulsaoProtocol() {
 
       {gestante && (
         <DangerBanner title="Gestante — investigar eclâmpsia; sulfato de magnésio associado (não substitui benzodiazepínicos)">
-          <Link href="/dashboard/protocolos-clinicos?category=obstetricia&protocol=emergencias-obstetricas" className="text-red-800 underline">
+          <Link href="/dashboard/protocolos-clinicos?category=clinica-aguda&protocol=emergencias-obstetricas" className="text-red-800 underline">
             Emergências obstétricas
           </Link>
         </DangerBanner>

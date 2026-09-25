@@ -57,11 +57,11 @@ export default function AgitacaoProtocol() {
 
       {organico && (
         <DangerBanner title="RASS ≥3 — investigar causa orgânica">
-          <Link href="/dashboard/protocolos-clinicos?category=neurologia&protocol=rebaixamento-consciencia" className="text-red-800 underline">
+          <Link href="/dashboard/protocolos-clinicos?category=clinica-aguda&protocol=rebaixamento-consciencia" className="text-red-800 underline">
             Rebaixamento de consciência
           </Link>
           {" · "}
-          <Link href="/dashboard/protocolos-clinicos?category=saude-mental&protocol=intoxicacao" className="text-red-800 underline">
+          <Link href="/dashboard/protocolos-clinicos?category=emergencia&protocol=intoxicacao" className="text-red-800 underline">
             Intoxicação
           </Link>
         </DangerBanner>

@@ -80,7 +80,7 @@ export default function SuicidioProtocol() {
       {cssrs === "alto" && (
         <DangerBanner title="Risco alto — não deixar sozinho; retirar objetos de risco; avaliação psiquiátrica antes de alta">
           <Link
-            href="/dashboard/protocolos-clinicos?category=saude-mental&protocol=agitacao"
+            href="/dashboard/protocolos-clinicos?category=saude-mental-uti&protocol=agitacao"
             className="mt-2 inline-block text-sm font-semibold text-red-800 underline"
           >
             Agitação psicomotora

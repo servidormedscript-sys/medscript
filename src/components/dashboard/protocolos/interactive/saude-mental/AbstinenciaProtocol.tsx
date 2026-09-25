@@ -68,7 +68,7 @@ export default function AbstinenciaProtocol() {
 
       {uti && (
         <DangerBanner title="Considerar UTI / monitorização intensiva">
-          <Link href="/dashboard/protocolos-clinicos?category=neurologia&protocol=crise-convulsiva" className="text-red-800 underline">
+          <Link href="/dashboard/protocolos-clinicos?category=clinica-aguda&protocol=crise-convulsiva" className="text-red-800 underline">
             Crise convulsiva
           </Link>
         </DangerBanner>

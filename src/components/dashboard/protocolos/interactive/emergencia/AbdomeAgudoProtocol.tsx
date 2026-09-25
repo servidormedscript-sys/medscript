@@ -43,7 +43,7 @@ export default function AbdomeAgudoProtocol() {
 
       {flags.sangramento && (
         <InfoBanner>
-          <Link href="/dashboard/protocolos-clinicos?category=gastroenterologia&protocol=hda" className="font-semibold underline">
+          <Link href="/dashboard/protocolos-clinicos?category=clinica-aguda&protocol=hda" className="font-semibold underline">
             Hemorragia digestiva alta
           </Link>
         </InfoBanner>

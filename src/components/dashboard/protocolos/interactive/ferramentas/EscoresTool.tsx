@@ -136,7 +136,7 @@ export default function EscoresTool() {
         <p className="mt-2 text-sm">
           Wells: {ws.toFixed(1)} — {ws > 4 ? "TEP provável (angio-TC)" : "TEP improvável (D-dímero)"}
         </p>
-        <Link href="/dashboard/protocolos-clinicos?category=respiratorio&protocol=tep" className="text-xs text-ocean-800 underline">
+        <Link href="/dashboard/protocolos-clinicos?category=clinica-aguda&protocol=tep" className="text-xs text-ocean-800 underline">
           Protocolo TEP
         </Link>
       </ProtocolPanel>
@@ -166,11 +166,11 @@ export default function EscoresTool() {
 
       <InfoBanner>
         Atalhos:{" "}
-        <Link href="/dashboard/protocolos-clinicos?category=saude-mental&protocol=abstinencia-alcoolica" className="underline">
+        <Link href="/dashboard/protocolos-clinicos?category=saude-mental-uti&protocol=abstinencia-alcoolica" className="underline">
           CIWA-Ar completo
         </Link>
         {" · "}
-        <Link href="/dashboard/protocolos-clinicos?category=saude-mental&protocol=risco-suicidio" className="underline">
+        <Link href="/dashboard/protocolos-clinicos?category=saude-mental-uti&protocol=risco-suicidio" className="underline">
           Risco de suicídio
         </Link>
       </InfoBanner>

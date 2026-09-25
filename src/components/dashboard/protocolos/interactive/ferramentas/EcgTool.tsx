@@ -114,7 +114,7 @@ export default function EcgTool() {
       )}
       {qtcClass && (qtcClass.includes("Prolongado") || qtcClass.includes("Muito")) && (
         <DangerBanner title={`QTc ${qtcClass} — revisar fármacos e K/Mg/Ca`}>
-          <Link href="/dashboard/protocolos-clinicos?category=metabolico&protocol=disturbios-eletroliticos" className="text-red-800 underline">
+          <Link href="/dashboard/protocolos-clinicos?category=clinica-aguda&protocol=disturbios-eletroliticos" className="text-red-800 underline">
             Distúrbios eletrolíticos
           </Link>
         </DangerBanner>

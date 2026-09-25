@@ -87,7 +87,7 @@ export default function DeliriumProtocol() {
 
       {agitacao && (
         <DangerBanner title="RASS ≥3 — agitação grave associada">
-          <Link href="/dashboard/protocolos-clinicos?category=saude-mental&protocol=agitacao" className="text-red-800 underline">
+          <Link href="/dashboard/protocolos-clinicos?category=saude-mental-uti&protocol=agitacao" className="text-red-800 underline">
             Agitação psicomotora
           </Link>
         </DangerBanner>
