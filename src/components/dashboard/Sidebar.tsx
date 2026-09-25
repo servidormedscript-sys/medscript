@@ -14,6 +14,8 @@ type SidebarProps = {
   paymentsEnabled: boolean;
   profile: Profile | null;
   userEmail?: string | null;
+  mobileOpen?: boolean;
+  onNavigate?: () => void;
 };
 
 function getInitials(name: string) {
@@ -43,6 +45,8 @@ export default function Sidebar({
   paymentsEnabled,
   profile,
   userEmail,
+  mobileOpen = false,
+  onNavigate,
 }: SidebarProps) {
   const pathname = usePathname();
 
@@ -76,6 +80,7 @@ export default function Sidebar({
       >
         <Link
           href={item.href}
+          onClick={() => onNavigate?.()}
           className={`sidebar-nav-link group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm transition-all duration-300 ${
             isActive
               ? "bg-white/10 font-medium text-white shadow-lg shadow-black/15"
@@ -102,7 +107,11 @@ export default function Sidebar({
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 flex h-dvh max-h-dvh w-64 flex-col overflow-hidden border-r border-white/10 bg-gradient-to-b from-navy-950 via-navy-900 to-ocean-950 text-white shadow-xl shadow-navy-950/30">
+    <aside
+      className={`fixed inset-y-0 left-0 z-50 flex h-dvh max-h-dvh w-[min(18rem,88vw)] flex-col overflow-hidden border-r border-white/10 bg-gradient-to-b from-navy-950 via-navy-900 to-ocean-950 text-white shadow-xl shadow-navy-950/30 transition-transform duration-300 ease-out lg:translate-x-0 lg:pt-[env(safe-area-inset-top)] lg:pb-[env(safe-area-inset-bottom)] ${
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
+    >
       <div className="sidebar-bg-glow pointer-events-none absolute inset-0" aria-hidden="true" />
       <div
         className="sidebar-bg-grid pointer-events-none absolute inset-0 opacity-[0.35]"
@@ -113,6 +122,7 @@ export default function Sidebar({
       <div className="relative shrink-0 border-b border-white/10 px-3 py-5">
         <Link
           href="/dashboard"
+          onClick={() => onNavigate?.()}
           className="sidebar-logo-link group mx-auto block w-full"
         >
           <div className="mx-auto flex h-[4.75rem] w-full max-w-[13rem] items-center justify-center">
@@ -159,6 +169,7 @@ export default function Sidebar({
         >
           <Link
             href="/dashboard/perfil"
+            onClick={() => onNavigate?.()}
             className="sidebar-footer-link group flex items-center gap-3 rounded-lg p-1 transition-all duration-300 hover:bg-white/[0.06]"
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-ocean-600/50 text-sm font-semibold text-white ring-2 ring-white/10">

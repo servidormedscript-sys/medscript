@@ -78,7 +78,7 @@ export default function MedicationAlertNotifier() {
 
   return (
     <aside
-      className="pointer-events-none fixed right-4 top-24 z-50 flex w-full max-w-sm flex-col gap-3"
+      className="pointer-events-none fixed right-3 top-[max(5.5rem,env(safe-area-inset-top))] z-50 flex w-[min(100%-1.5rem,24rem)] flex-col gap-3 sm:right-4"
       aria-live="polite"
       aria-label="Alertas de medicamentos"
     >

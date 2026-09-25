@@ -14,7 +14,7 @@ export default function PageShell({
   return (
     <>
       <DashboardHeader title={title} description={description} />
-      <div className="p-8">{children}</div>
+      <div className="p-4 sm:p-6 lg:p-8">{children}</div>
     </>
   );
 }

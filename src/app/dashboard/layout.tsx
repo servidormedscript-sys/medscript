@@ -1,6 +1,5 @@
-import Sidebar from "@/components/dashboard/Sidebar";
+import DashboardLayoutShell from "@/components/dashboard/DashboardLayoutShell";
 import DashboardAlertsLayer from "@/components/dashboard/DashboardAlertsLayer";
-import DashboardSupportTopBar from "@/components/dashboard/DashboardSupportTopBar";
 import SubscriptionWarningBanner from "@/components/dashboard/SubscriptionWarningBanner";
 import ImpersonationBanner from "@/components/platform/ImpersonationBanner";
 import { requireSessionProfile, isAdmin } from "@/lib/auth/get-session-profile";
@@ -40,24 +39,24 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-ocean-50/80 via-navy-50 to-white">
-      <Sidebar
+    <>
+      <DashboardLayoutShell
         isAdmin={isAdmin(profile)}
         isSuperAdmin={isSuperAdmin(profile)}
         paymentsEnabled={isPaymentsEnabled()}
         profile={profile}
         userEmail={user.email}
-      />
-      <main className="relative ml-64 min-h-dvh flex-1 overflow-auto">
-        {impersonateLabel ? (
-          <ImpersonationBanner adminLabel={impersonateLabel} />
-        ) : (
-          <SubscriptionWarningBanner />
-        )}
-        <DashboardSupportTopBar />
+        banners={
+          impersonateLabel ? (
+            <ImpersonationBanner adminLabel={impersonateLabel} />
+          ) : (
+            <SubscriptionWarningBanner />
+          )
+        }
+      >
         {children}
-      </main>
+      </DashboardLayoutShell>
       <DashboardAlertsLayer />
-    </div>
+    </>
   );
 }

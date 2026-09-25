@@ -45,6 +45,15 @@ body {
   background: #ffffff;
   color: #212e4e;
   font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 @keyframes hero-logo-glow {

@@ -62,7 +62,7 @@ export default function SystemNotificationNotifier() {
 
   return (
     <aside
-      className="pointer-events-none fixed bottom-4 right-4 z-[49] flex w-full max-w-sm flex-col gap-3"
+      className="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-3 z-[49] flex w-[min(100%-1.5rem,24rem)] flex-col gap-3 sm:right-4"
       aria-live="polite"
       aria-label="Notificações do sistema"
     >
