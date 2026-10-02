@@ -3,6 +3,8 @@ import {
   formatOverdueDuration,
   getMedicationScheduleInfo,
 } from "@/lib/medication-schedule";
+import type { SpecialtyChartRow } from "@/lib/inpatient/specialty-aggregation";
+import type { BedMapPayload } from "@/lib/inpatient/bed-map-data";
 import type { KanbanEpisode, RiskLevel } from "@/lib/types/patient";
 import { KANBAN_COLUMNS, RISK_LABELS, STATUS_LABELS } from "@/lib/types/patient";
 import type { PatientCareItem } from "@/lib/types/patient-care";
@@ -49,6 +51,8 @@ export type DashboardOverview = {
     patient_name: string;
     bed: string | null;
   }[];
+  bed_summary?: BedMapPayload["summary"];
+  specialty_chart?: SpecialtyChartRow[];
 };
 
 const UPCOMING_WINDOW_MINUTES = 120;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   alteplaseMg,
   classificacaoLabel,
@@ -43,6 +44,8 @@ export default function AvcProtocol() {
   const janelaTe = minN != null ? trombectomiaJanela(minN) : null;
 
   const iotHref = `/dashboard/protocolos-clinicos?category=emergencia&protocol=isr${peso ? `&weight=${pesoN}` : ""}`;
+
+  useSyncProtocolVitals({ pas, pad, glasgow, weight: peso });
 
   return (
     <div className="space-y-4">

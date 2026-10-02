@@ -10,6 +10,8 @@ import { validatePatientParams } from "@/lib/clinical/protocols/dose-utils";
 import type { ClinicalProtocol } from "@/lib/clinical/protocols/types";
 import PatientParamsForm from "./PatientParamsForm";
 import ProtocolDoseResults from "./ProtocolDoseResults";
+import ProtocolInternarButton from "./ProtocolInternarButton";
+import { ProtocolInternationProvider } from "./ProtocolInternationBridge";
 
 type ProtocolDetailProps = {
   protocol: ClinicalProtocol;
@@ -57,6 +59,7 @@ export default function ProtocolDetail({ protocol }: ProtocolDetailProps) {
   }, [protocol.id, calculatorAvailable, weightKg, ageYears, ageMonths]);
 
   return (
+    <ProtocolInternationProvider weightKg={weightKg}>
     <div className="space-y-5">
       <section className="rounded-lg border border-navy-900/10 bg-white p-5">
         <h2 className="text-xl font-medium text-navy-950">{protocol.name}</h2>
@@ -79,6 +82,12 @@ export default function ProtocolDetail({ protocol }: ProtocolDetailProps) {
           </p>
         ) : null}
       </section>
+
+      <ProtocolInternarButton
+        protocolId={protocol.id}
+        protocolName={protocol.name}
+        suggestedDiagnosis={protocol.keywords[0] ? `${protocol.name}` : ""}
+      />
 
       {InteractiveModule ? <InteractiveModule /> : null}
 
@@ -105,5 +114,6 @@ export default function ProtocolDetail({ protocol }: ProtocolDetailProps) {
         </div>
       ) : null}
     </div>
+    </ProtocolInternationProvider>
   );
 }

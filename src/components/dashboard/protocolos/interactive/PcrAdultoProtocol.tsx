@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useProtocolInternationBridge } from "@/components/dashboard/protocolos/ProtocolInternationBridge";
 import {
   amiodaronaDoseMg,
   compressionBpm,
@@ -205,6 +206,18 @@ export default function PcrAdultoProtocol() {
     dispatch({ type: "ACK_RHYTHM" });
     scrollToRhythm();
   };
+
+  const bridge = useProtocolInternationBridge();
+  const roscLogged = useRef(false);
+  useEffect(() => {
+    if (state.rosc && !roscLogged.current) {
+      roscLogged.current = true;
+      bridge.logEvent(
+        `ROSC registrado — tempo de RCP ${formatTime(state.elapsedSec)}`,
+      );
+    }
+    if (!state.rosc) roscLogged.current = false;
+  }, [state.rosc, state.elapsedSec, bridge]);
 
   if (!mounted) {
     return (

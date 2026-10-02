@@ -16,6 +16,7 @@ import PatientCadastroPanel from "./PatientCadastroPanel";
 import PatientFichaViewModal from "./PatientFichaViewModal";
 import PatientFichasManager from "./PatientFichasManager";
 import PatientSummaryPanel from "./PatientSummaryPanel";
+import BedMapPanel from "./BedMapPanel";
 import EditPatientFichaModal from "./EditPatientFichaModal";
 
 type KanbanData = Record<PatientStatus, KanbanEpisode[]>;
@@ -39,8 +40,13 @@ function findEpisode(kanban: KanbanData, episodeId: string): KanbanEpisode | nul
 export default function PatientKanbanBoard() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<
-    "kanban" | "desarquivamento" | "fichas" | "resumo"
+    "kanban" | "mapa-leitos" | "desarquivamento" | "fichas" | "resumo"
   >("kanban");
+  const [prefillBed, setPrefillBed] = useState<{
+    id: string;
+    code: string;
+    unit: string;
+  } | null>(null);
   const [resumoEpisodeId, setResumoEpisodeId] = useState<string | undefined>();
   const [kanban, setKanban] = useState<KanbanData>(emptyKanban);
   const [loading, setLoading] = useState(true);
@@ -84,6 +90,7 @@ export default function PatientKanbanBoard() {
 
     if (
       tab === "kanban" ||
+      tab === "mapa-leitos" ||
       tab === "desarquivamento" ||
       tab === "fichas" ||
       tab === "resumo"
@@ -93,6 +100,10 @@ export default function PatientKanbanBoard() {
 
     if (episode) {
       setResumoEpisodeId(episode);
+    }
+
+    if (searchParams.get("internar") === "1") {
+      setShowNewPatient(true);
     }
   }, [searchParams]);
 
@@ -173,6 +184,17 @@ export default function PatientKanbanBoard() {
             }`}
           >
             Kanban
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("mapa-leitos")}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === "mapa-leitos"
+                ? "border-b-2 border-navy-900 text-navy-950"
+                : "text-navy-800/50 hover:text-navy-800"
+            }`}
+          >
+            Mapa de Leitos
           </button>
           <button
             type="button"
@@ -298,6 +320,13 @@ export default function PatientKanbanBoard() {
             </div>
           </>
         )
+      ) : activeTab === "mapa-leitos" ? (
+        <BedMapPanel
+          onInternarAqui={(bed) => {
+            setPrefillBed(bed);
+            setShowNewPatient(true);
+          }}
+        />
       ) : activeTab === "desarquivamento" ? (
         <PatientCadastroPanel
           onReactivated={() => {
@@ -317,10 +346,22 @@ export default function PatientKanbanBoard() {
 
       {showNewPatient && (
         <NewPatientModal
-          onClose={() => setShowNewPatient(false)}
-          onCreated={() => {
+          lockInitialStatus={prefillBed ? "internado" : undefined}
+          initialOrganizationBed={prefillBed ?? undefined}
+          onClose={() => {
             setShowNewPatient(false);
-            setMessage({ type: "success", text: "Paciente cadastrado em triagem." });
+            setPrefillBed(null);
+          }}
+          onCreated={() => {
+            const internedInBed = prefillBed;
+            setShowNewPatient(false);
+            setPrefillBed(null);
+            setMessage({
+              type: "success",
+              text: internedInBed
+                ? "Paciente internado no leito selecionado."
+                : "Paciente cadastrado em triagem.",
+            });
             loadKanban();
           }}
           onError={(text) => setMessage({ type: "error", text })}

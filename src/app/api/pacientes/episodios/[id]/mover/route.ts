@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSessionWithAdmin } from "@/lib/api/require-session";
+import {
+  occupyOrganizationBed,
+  releaseOrganizationBedForEpisode,
+} from "@/lib/inpatient/bed-sync";
 import { accumulateStatusSeconds, getCurrentPeriodSeconds } from "@/lib/patient-status-time";
 import {
   ALLOWED_TRANSITIONS,
@@ -28,6 +32,7 @@ export async function POST(request: Request, context: RouteContext) {
     medications?: string;
     diagnosis?: string;
     initial_assessment?: string;
+    organization_bed_id?: string;
   };
 
   try {
@@ -69,13 +74,6 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  if (to_status === "internado" && !risk_level) {
-    return NextResponse.json(
-      { error: "Classificação de risco é obrigatória ao internar." },
-      { status: 400 }
-    );
-  }
-
   if (to_status === "alta_recente" && (!alta_days || alta_days < 1)) {
     return NextResponse.json(
       { error: "Informe o período em dias para alta recente." },
@@ -101,7 +99,7 @@ export async function POST(request: Request, context: RouteContext) {
     internado_seconds: accumulated.internado_seconds,
   };
   if (to_status === "internado") {
-    updateData.risk_level = risk_level;
+    updateData.risk_level = risk_level ?? null;
   }
 
   if (to_status === "alta_recente") {
@@ -135,12 +133,28 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 
+  if (fromStatus === "internado" && to_status !== "internado") {
+    await releaseOrganizationBedForEpisode(supabase, adminId, episodeId);
+  }
+
+  if (to_status === "internado" && body.organization_bed_id?.trim()) {
+    const bedErr = await occupyOrganizationBed(
+      supabase,
+      adminId,
+      body.organization_bed_id.trim(),
+      episodeId,
+    );
+    if (bedErr) {
+      return NextResponse.json({ error: bedErr }, { status: 400 });
+    }
+  }
+
   await supabase.from("patient_movements").insert({
     episode_id: episodeId,
     from_status: fromStatus,
     to_status,
     report_text: report_text?.trim() ?? "",
-    risk_level: to_status === "internado" ? risk_level : null,
+    risk_level: to_status === "internado" ? risk_level ?? null : null,
     alta_days: to_status === "alta_recente" ? alta_days : null,
     duration_seconds:
       fromStatus === "triagem" ||

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   classificarHta,
   META_POR_SUBTIPO,
@@ -44,6 +45,8 @@ export default function CriseHipertensivaProtocol() {
     classif === "emergencia"
       ? subtipoEmergencia({ ...sub, gestante })
       : null;
+
+  useSyncProtocolVitals({ pas, pad, weight: peso });
 
   return (
     <div className="space-y-4">

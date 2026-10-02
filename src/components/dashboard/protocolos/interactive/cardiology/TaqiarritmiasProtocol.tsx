@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   adenosinaDoseMg,
   alertaWpw,
@@ -112,6 +113,8 @@ export default function TaqiarritmiasProtocol() {
   const showEscores = tipo === "fa-flutter" && !unstable;
 
   const manobrasVagais = tipo === "tsvp" && !unstable;
+
+  useSyncProtocolVitals({ pas, fc, weight: peso });
 
   return (
     <div className="space-y-4">

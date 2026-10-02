@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   alertaArritmia,
   calcDeficitAguaMl,
@@ -35,6 +36,8 @@ export default function EletrolitosProtocol() {
 
   const volHiponat = tab === "hiponat" && g === "grave" ? calcNaCl3Hiponatremia(pesoN, sexo, v) : null;
   const deficit = tab === "hipernat" ? calcDeficitAguaMl(pesoN, sexo, v) : null;
+
+  useSyncProtocolVitals({ weight: peso });
 
   return (
     <div className="space-y-4">

@@ -6,6 +6,7 @@ import { buildEpisodeCareSummary } from "@/lib/patient-care-summary";
 import type { EpisodeCareSummary } from "@/lib/patient-care-summary";
 import type { KanbanEpisode, Patient, PatientEpisode } from "@/lib/types/patient";
 import { RISK_LABELS, SEX_LABELS, STATUS_LABELS } from "@/lib/types/patient";
+import { inpatientChartUrl } from "@/lib/dashboard/inpatient-chart-url";
 import { meuPacienteGraveT0Url } from "@/lib/dashboard/meu-paciente-grave-url";
 import { formatAge } from "@/lib/utils/age";
 import { formatCpf } from "@/lib/utils/cpf";
@@ -52,6 +53,10 @@ export default function PatientFichaViewModal({
   const router = useRouter();
   const patient = episode.patient;
   const ageLabel = patient.birth_date ? formatAge(patient.birth_date) : null;
+  const chartEligible =
+    episode.status === "internado" ||
+    episode.status === "alta_recente" ||
+    episode.status === "em_observacao";
   const [careSummary, setCareSummary] = useState<EpisodeCareSummary | null>(
     "care_summary" in episode ? episode.care_summary ?? null : null
   );
@@ -230,6 +235,18 @@ export default function PatientFichaViewModal({
           >
             Fechar
           </button>
+          {chartEligible && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                router.push(inpatientChartUrl(episode.id));
+              }}
+              className="flex-1 rounded-md bg-navy-900 py-2.5 text-sm font-medium text-white hover:bg-navy-800"
+            >
+              Prontuário
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {

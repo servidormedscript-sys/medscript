@@ -1,3 +1,5 @@
+import type { CodeStatus } from "@/lib/types/inpatient-chart";
+
 export type PatientStatus =
   | "triagem"
   | "em_observacao"
@@ -28,6 +30,8 @@ export type PatientEpisode = {
   status: PatientStatus;
   weight: string | null;
   bed: string | null;
+  care_specialty: string | null;
+  organization_bed_id: string | null;
   diagnosis: string | null;
   allergies: string | null;
   medications: string | null;
@@ -62,11 +66,21 @@ export type PatientMovement = {
 import type { EpisodeCareSummary } from "@/lib/patient-care-summary";
 import type { PatientCareItem } from "@/lib/types/patient-care";
 
+export type EpisodeClinicalStatusSummary = {
+  risk: RiskLevel;
+  discharge_met: number;
+  discharge_total: number;
+  evolution_delay_hours: number;
+  next_step_preview?: string | null;
+};
+
 export type KanbanEpisode = PatientEpisode & {
   patient: Patient;
   days_remaining: number | null;
   care_summary?: EpisodeCareSummary;
   care_items?: PatientCareItem[];
+  clinical_status?: EpisodeClinicalStatusSummary;
+  code_status?: CodeStatus;
 };
 
 export const STATUS_LABELS: Record<PatientStatus, string> = {
@@ -120,6 +134,8 @@ export type CreatePatientPayload = {
   sex: PatientSex;
   weight?: string;
   bed?: string;
+  care_specialty?: string;
+  organization_bed_id?: string;
   diagnosis?: string;
   allergies?: string;
   medications?: string;
@@ -138,6 +154,8 @@ export type UpdatePatientPayload = {
 export type UpdateEpisodePayload = {
   weight?: string;
   bed?: string;
+  care_specialty?: string;
+  organization_bed_id?: string;
   diagnosis?: string;
   allergies?: string;
   medications?: string;

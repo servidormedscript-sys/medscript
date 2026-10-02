@@ -1,4 +1,8 @@
-import type { KanbanEpisode } from "@/lib/types/patient";
+import Link from "next/link";
+import { inpatientChartUrl } from "@/lib/dashboard/inpatient-chart-url";
+import CodeStatusBadge from "@/components/inpatient/CodeStatusBadge";
+import type { KanbanEpisode, RiskLevel } from "@/lib/types/patient";
+import { RISK_LABELS } from "@/lib/types/patient";
 import StatusTimeDisplay from "./StatusTimeDisplay";
 import PatientCareSummaryBadge from "./PatientCareSummaryBadge";
 
@@ -9,6 +13,12 @@ type PatientKanbanCardProps = {
   onDragStart?: (episode: KanbanEpisode) => void;
   onDragEnd?: () => void;
   isDragging?: boolean;
+};
+
+const RISK_BADGE: Record<RiskLevel, string> = {
+  alto: "bg-red-100 text-red-800 border-red-200",
+  medio: "bg-amber-100 text-amber-900 border-amber-200",
+  baixo: "bg-emerald-100 text-emerald-900 border-emerald-200",
 };
 
 function IconEye(props: React.SVGProps<SVGSVGElement>) {
@@ -29,6 +39,10 @@ export default function PatientKanbanCard({
   isDragging,
 }: PatientKanbanCardProps) {
   const patient = episode.patient;
+  const showChart =
+    episode.status === "internado" ||
+    episode.status === "alta_recente" ||
+    episode.status === "em_observacao";
 
   return (
     <article
@@ -65,9 +79,46 @@ export default function PatientKanbanCard({
         <p className="mb-2 text-xs text-navy-800/60">Leito {episode.bed}</p>
       )}
 
+      {(episode.clinical_status || episode.code_status) && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {episode.code_status && (
+            <CodeStatusBadge status={episode.code_status} compact />
+          )}
+          {episode.clinical_status && (
+            <>
+              <span
+                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${RISK_BADGE[episode.clinical_status.risk]}`}
+              >
+                {RISK_LABELS[episode.clinical_status.risk]}
+              </span>
+              <span className="rounded-full border border-navy-900/12 bg-white px-2 py-0.5 text-[10px] font-medium text-navy-800">
+                Alta {episode.clinical_status.discharge_met}/
+                {episode.clinical_status.discharge_total}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+
       <StatusTimeDisplay episode={episode} compact />
 
+      {episode.clinical_status?.next_step_preview && (
+        <p className="mb-2 line-clamp-2 text-[11px] text-navy-800/75">
+          → {episode.clinical_status.next_step_preview}
+        </p>
+      )}
+
       <PatientCareSummaryBadge summary={episode.care_summary} compact />
+
+      {showChart && (
+        <Link
+          href={inpatientChartUrl(episode.id)}
+          className="mt-2 block w-full rounded border border-navy-900/12 bg-navy-900 py-1.5 text-center text-xs font-medium text-white transition-colors hover:bg-navy-800"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Prontuário
+        </Link>
+      )}
 
       <button
         type="button"

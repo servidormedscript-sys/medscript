@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   categoriaTep,
   dDimerIdadeCutoff,
@@ -55,6 +56,8 @@ export default function TepProtocol() {
     disfuncaoVd,
     biomarcador,
   });
+
+  useSyncProtocolVitals({ pas, fc, fr, spo2 });
 
   return (
     <div className="space-y-4">

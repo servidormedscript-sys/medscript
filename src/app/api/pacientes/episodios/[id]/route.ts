@@ -19,6 +19,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     allergies?: string;
     medications?: string;
     initial_assessment?: string;
+    care_specialty?: string | null;
   };
 
   try {
@@ -63,6 +64,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
   if (body.initial_assessment !== undefined) {
     updates.initial_assessment = body.initial_assessment.trim() || null;
+  }
+  if (body.care_specialty !== undefined) {
+    updates.care_specialty = body.care_specialty?.trim() || null;
   }
 
   if (Object.keys(updates).length === 0) {

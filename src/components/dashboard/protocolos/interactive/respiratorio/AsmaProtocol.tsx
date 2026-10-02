@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   classificarAsma,
   prednisonaMg,
@@ -37,6 +38,8 @@ export default function AsmaProtocol() {
     fr: frN,
     pfe: pfeN,
   });
+
+  useSyncProtocolVitals({ spo2, fr, fc, weight: peso });
 
   const bronco: Record<string, string> = {
     leve: "Salbutamol 4 jatos ou Budesonida-Formoterol 2 jatos",

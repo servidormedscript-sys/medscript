@@ -58,6 +58,19 @@ const medscriptTables = [
   "support_tickets",
 ];
 
+const inpatientTables = [
+  "episode_vital_records",
+  "episode_evolutions",
+  "episode_prescriptions",
+  "episode_lab_values",
+  "episode_conduct",
+  "episode_discharge",
+  "episode_internacao",
+  "episode_timeline_events",
+  "episode_core_generations",
+  "episode_treatment_responses",
+];
+
 async function main() {
   console.log("Tabelas MedScript (existência via API):");
   for (const t of medscriptTables) {
@@ -78,6 +91,27 @@ async function main() {
     console.log("\nMigration 017 (grave_baseline): coluna presente");
   }
 
+  console.log("\nInternação (tabelas via API):");
+  for (const t of inpatientTables) {
+    const { count, error } = await admin.from(t).select("*", { head: true, count: "exact" });
+    if (error) {
+      console.log(`  ${t}: ERRO — ${error.message}`);
+    } else {
+      console.log(`  ${t}: OK (linhas ~${count ?? "?"})`);
+    }
+  }
+
+  const colChecks = [
+    { table: "episode_evolutions", col: "signed_at", label: "032 assinatura evolução" },
+    { table: "episode_conduct", col: "no_specific_treatment", label: "033 sem tratamento específico" },
+    { table: "episode_internacao", col: "finalized_at", label: "034 AIH finalizada" },
+  ];
+  console.log("\nColunas migrations 032–034:");
+  for (const { table, col, label } of colChecks) {
+    const { error } = await admin.from(table).select(col, { head: true, count: "exact" });
+    console.log(`  ${label}: ${error ? `PENDENTE — ${error.message}` : "OK"}`);
+  }
+
   const { count: profileCount, error: pErr } = await admin
     .from("profiles")
     .select("*", { head: true, count: "exact" });
@@ -85,10 +119,11 @@ async function main() {
     console.log("Perfis cadastrados:", profileCount);
   }
 
-  console.log("\nCLI (PowerShell interativo — eu não consigo abrir o login daqui):");
-  console.log("  npx supabase login");
+  console.log("\nCLI Supabase:");
+  console.log("  npm run supabase:login");
   console.log("  npm run supabase:link");
-  console.log("  npm run supabase:migrations");
+  console.log("  npm run supabase:migrations   # listar local vs remoto");
+  console.log("  npm run supabase:push         # aplicar migrations pendentes");
 }
 
 main().catch((e) => {

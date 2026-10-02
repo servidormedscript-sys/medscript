@@ -1,12 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { KanbanEpisode, PatientStatus, RiskLevel } from "@/lib/types/patient";
-import {
-  ALLOWED_TRANSITIONS,
-  RISK_LABELS,
-  STATUS_LABELS,
-} from "@/lib/types/patient";
+import type { KanbanEpisode, PatientStatus } from "@/lib/types/patient";
+import { ALLOWED_TRANSITIONS, STATUS_LABELS } from "@/lib/types/patient";
 
 type MovePatientModalProps = {
   episode: KanbanEpisode;
@@ -35,13 +31,11 @@ export default function MovePatientModal({
   const [loading, setLoading] = useState(false);
   const [toStatus, setToStatus] = useState<PatientStatus>(initialStatus);
   const [report, setReport] = useState("");
-  const [riskLevel, setRiskLevel] = useState<RiskLevel>("medio");
   const [altaDays, setAltaDays] = useState(7);
 
   useEffect(() => {
     setToStatus(initialStatus);
     setReport("");
-    setRiskLevel("medio");
     setAltaDays(7);
   }, [episode.id, initialStatus]);
 
@@ -63,7 +57,6 @@ export default function MovePatientModal({
       body: JSON.stringify({
         to_status: toStatus,
         report_text: report,
-        risk_level: toStatus === "internado" ? riskLevel : undefined,
         alta_days: toStatus === "alta_recente" ? altaDays : undefined,
       }),
     });
@@ -134,22 +127,10 @@ export default function MovePatientModal({
           </div>
 
           {toStatus === "internado" && (
-            <div>
-              <label className="mb-1 block text-xs font-medium text-navy-800/70">
-                Classificação de risco *
-              </label>
-              <select
-                value={riskLevel}
-                onChange={(e) => setRiskLevel(e.target.value as RiskLevel)}
-                className={inputClass}
-              >
-                {(Object.keys(RISK_LABELS) as RiskLevel[]).map((risk) => (
-                  <option key={risk} value={risk}>
-                    {RISK_LABELS[risk]}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <p className="rounded-md border border-navy-900/8 bg-navy-50 px-3 py-2 text-xs text-navy-800/65">
+              O risco clínico e os critérios de alta são calculados automaticamente
+              no prontuário (vitais, exames e evolução).
+            </p>
           )}
 
           {toStatus === "alta_recente" && (

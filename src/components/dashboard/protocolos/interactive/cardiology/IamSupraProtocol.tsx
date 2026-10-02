@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   fibrinoliseIndicada,
   graceRisco,
@@ -32,6 +33,8 @@ export default function IamSupraProtocol() {
     supraSt: supra,
   });
   const risco = graceRisco(grace);
+
+  useSyncProtocolVitals({ pas, fc, weight: peso });
 
   return (
     <div className="space-y-4">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   condutaPotassio,
   gravidadeCad,
@@ -30,6 +31,8 @@ export default function CetoProtocol() {
   const ins = insulinaUiH(pesoN);
   const kCond = condutaPotassio(kN);
   const dextrose = precisaDextrose(gN);
+
+  useSyncProtocolVitals({ weight: peso });
 
   return (
     <div className="space-y-4">

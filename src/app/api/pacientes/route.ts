@@ -1,7 +1,18 @@
 import { NextResponse } from "next/server";
 import { getSessionWithAdmin } from "@/lib/api/require-session";
+import {
+  computeStatusForEpisode,
+  type EpisodeClinicalBundle,
+} from "@/lib/inpatient/clinical-status-batch";
+import { occupyOrganizationBed } from "@/lib/inpatient/bed-sync";
+import { loadClinicalBundles } from "@/lib/inpatient/load-clinical-bundles";
 import { fetchCareItemsByEpisode } from "@/lib/patient-care-fetch";
 import type { KanbanEpisode, PatientSex, PatientStatus, RiskLevel } from "@/lib/types/patient";
+import { seedAdmissionFromProtocolTransfer } from "@/lib/inpatient/seed-admission-from-protocol";
+import type { ProtocolInternationTransfer } from "@/lib/inpatient/protocol-internation";
+import { computeCriticalLabConducts } from "@/lib/inpatient/lab-critical-conduct";
+import { computeLabAlerts } from "@/lib/inpatient/lab-alerts";
+import { buildPatientNextSteps } from "@/lib/inpatient/patient-next-steps";
 import { INITIAL_KANBAN_OPTIONS, STATUS_LABELS } from "@/lib/types/patient";
 
 function computeDaysRemaining(
@@ -60,16 +71,113 @@ export async function GET() {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 
-  const episodes = filtered.map((ep) => ({
-    ...ep,
-    days_remaining: computeDaysRemaining(ep.alta_started_at, ep.alta_days),
-    care_summary: summariesByEpisode[ep.id] ?? {
-      pendingExamCount: 0,
-      pendingMedDoseCount: 0,
-      pendingExams: [],
-      pendingMedDoses: [],
-    },
-  })) as KanbanEpisode[];
+  const trackableIds = filtered
+    .filter((ep) => ep.status === "internado" || ep.status === "alta_recente")
+    .map((ep) => ep.id);
+
+  let clinicalBundles = new Map<string, EpisodeClinicalBundle>();
+  try {
+    clinicalBundles = await loadClinicalBundles(supabase, trackableIds);
+  } catch {
+    clinicalBundles = new Map();
+  }
+
+  const codeStatusByEpisode = new Map<string, string>();
+  const pendingReconByEpisode = new Map<string, number>();
+  const pendingLabsByEpisode = new Map<
+    string,
+    import("@/lib/types/inpatient-chart").EpisodeLabPending[]
+  >();
+
+  if (trackableIds.length > 0) {
+    const [conductRes, reconRes, pendingRes] = await Promise.all([
+      supabase
+        .from("episode_conduct")
+        .select("episode_id, code_status")
+        .in("episode_id", trackableIds),
+      supabase
+        .from("episode_med_reconciliation")
+        .select("episode_id")
+        .in("episode_id", trackableIds)
+        .eq("status", "pendente"),
+      supabase
+        .from("episode_lab_pending")
+        .select("*")
+        .in("episode_id", trackableIds)
+        .is("fulfilled_at", null),
+    ]);
+    for (const row of conductRes.data ?? []) {
+      codeStatusByEpisode.set(row.episode_id, row.code_status);
+    }
+    for (const row of reconRes.data ?? []) {
+      pendingReconByEpisode.set(
+        row.episode_id,
+        (pendingReconByEpisode.get(row.episode_id) ?? 0) + 1,
+      );
+    }
+    for (const row of pendingRes.data ?? []) {
+      const eid = String(row.episode_id);
+      const list = pendingLabsByEpisode.get(eid) ?? [];
+      list.push(row as import("@/lib/types/inpatient-chart").EpisodeLabPending);
+      pendingLabsByEpisode.set(eid, list);
+    }
+  }
+
+  const episodes = filtered.map((ep) => {
+    const base = {
+      ...ep,
+      days_remaining: computeDaysRemaining(ep.alta_started_at, ep.alta_days),
+      care_summary: summariesByEpisode[ep.id] ?? {
+        pendingExamCount: 0,
+        pendingMedDoseCount: 0,
+        pendingExams: [],
+        pendingMedDoses: [],
+      },
+    };
+
+    if (ep.status !== "internado" && ep.status !== "alta_recente") {
+      return base;
+    }
+
+    const birthDate = ep.patient?.birth_date ?? null;
+    const status = computeStatusForEpisode(
+      ep.id,
+      ep.created_at,
+      birthDate,
+      clinicalBundles,
+    );
+
+    const codeStatus = codeStatusByEpisode.get(ep.id);
+    const bundle = clinicalBundles.get(ep.id) ?? {
+      vitals: [],
+      labs: [],
+      evolutionAt: [],
+    };
+    const labAlerts = computeLabAlerts(bundle.labs);
+    const criticalConducts = computeCriticalLabConducts(bundle.labs);
+    const steps = buildPatientNextSteps({
+      clinicalStatus: status,
+      vitalRecords: bundle.vitals,
+      labAlerts,
+      criticalConducts,
+      pendingReconciliation: pendingReconByEpisode.get(ep.id) ?? 0,
+      pendingLabs: pendingLabsByEpisode.get(ep.id) ?? [],
+      codeStatus: (codeStatus as import("@/lib/types/inpatient-chart").CodeStatus) ?? null,
+      internationHours:
+        (Date.now() - new Date(ep.created_at).getTime()) / (1000 * 60 * 60),
+    });
+    return {
+      ...base,
+      clinical_status: {
+        risk: status.risk,
+        discharge_met: status.discharge.met,
+        discharge_total: status.discharge.total,
+        evolution_delay_hours: status.evolutionDelayHours,
+        next_step_preview: steps[0]?.text ?? null,
+      },
+      ...(codeStatus ? { code_status: codeStatus } : {}),
+    };
+  }) as KanbanEpisode[];
 
   const grouped = {
     triagem: episodes.filter((e) => e.status === "triagem"),
@@ -101,6 +209,9 @@ export async function POST(request: Request) {
     initial_assessment?: string;
     risk_level?: RiskLevel;
     alta_days?: number;
+    care_specialty?: string;
+    organization_bed_id?: string;
+    internation_seed?: ProtocolInternationTransfer;
   };
 
   try {
@@ -136,13 +247,6 @@ export async function POST(request: Request) {
   if (!INITIAL_KANBAN_OPTIONS.includes(initialStatus)) {
     return NextResponse.json(
       { error: "Situação inicial inválida para cadastro." },
-      { status: 400 }
-    );
-  }
-
-  if (initialStatus === "internado" && !body.risk_level) {
-    return NextResponse.json(
-      { error: "Classificação de risco é obrigatória ao cadastrar como internado." },
       { status: 400 }
     );
   }
@@ -205,10 +309,11 @@ export async function POST(request: Request) {
     allergies: body.allergies?.trim() || null,
     medications: body.medications?.trim() || null,
     initial_assessment: body.initial_assessment?.trim() || null,
+    care_specialty: body.care_specialty?.trim() || null,
     created_by: user!.id,
   };
 
-  if (initialStatus === "internado") {
+  if (initialStatus === "internado" && body.risk_level) {
     episodeData.risk_level = body.risk_level;
   }
 
@@ -238,6 +343,49 @@ export async function POST(request: Request) {
     risk_level: initialStatus === "internado" ? body.risk_level : null,
     created_by: user!.id,
   });
+
+  if (
+    initialStatus === "internado" &&
+    body.organization_bed_id?.trim()
+  ) {
+    const bedErr = await occupyOrganizationBed(
+      supabase,
+      adminId,
+      body.organization_bed_id.trim(),
+      episode.id,
+    );
+    if (bedErr) {
+      return NextResponse.json({ error: bedErr }, { status: 400 });
+    }
+    const { data: refreshed } = await supabase
+      .from("patient_episodes")
+      .select("*, patient:patients (*)")
+      .eq("id", episode.id)
+      .single();
+    if (body.internation_seed && initialStatus === "internado") {
+      await seedAdmissionFromProtocolTransfer(
+        supabase,
+        (refreshed ?? episode) as import("@/lib/types/patient").PatientEpisode,
+        patient,
+        body.internation_seed,
+        user!.id,
+      );
+    }
+    return NextResponse.json(
+      { patient, episode: refreshed ?? episode },
+      { status: 201 },
+    );
+  }
+
+  if (body.internation_seed && initialStatus === "internado") {
+    await seedAdmissionFromProtocolTransfer(
+      supabase,
+      episode as import("@/lib/types/patient").PatientEpisode,
+      patient,
+      body.internation_seed,
+      user!.id,
+    );
+  }
 
   return NextResponse.json({ patient, episode }, { status: 201 });
 }

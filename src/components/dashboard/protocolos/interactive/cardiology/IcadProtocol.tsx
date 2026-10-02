@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   ADHERE_MORTALIDADE,
   adhereGrupo,
@@ -43,6 +44,8 @@ export default function IcadProtocol() {
   const perfil = perfilIc(congesto, hipoperfundido);
   const adhere = adhereGrupo(Number(ureia) || 0, Number(pas) || 0, Number(creat) || 0);
   const sglt2 = feReduzida || (Number(feValor) > 0 && Number(feValor) <= 40);
+
+  useSyncProtocolVitals({ pas });
 
   return (
     <div className="space-y-4">

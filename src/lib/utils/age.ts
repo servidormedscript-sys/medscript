@@ -1,3 +1,10 @@
+/** Idade total em meses (para faixas pediátricas de sinais vitais). */
+export function ageInMonths(birthDate: string): number | null {
+  const age = calculateAge(birthDate);
+  if (!age) return null;
+  return age.years * 12 + age.months;
+}
+
 export function calculateAge(birthDate: string): {
   years: number;
   months: number;

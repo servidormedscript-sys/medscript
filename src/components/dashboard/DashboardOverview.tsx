@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import NewPatientModal from "@/components/dashboard/pacientes/NewPatientModal";
+import InpatientPendingLabsPanel from "@/components/inpatient/InpatientPendingLabsPanel";
+import InpatientSpecialtyChart from "@/components/inpatient/InpatientSpecialtyChart";
 import { useClinicRealtime } from "@/hooks/useClinicRealtime";
 import { meuPacienteGraveT0Url } from "@/lib/dashboard/meu-paciente-grave-url";
 import type { DashboardOverview, KanbanColumnStatus } from "@/lib/dashboard/overview";
@@ -199,6 +201,43 @@ export default function DashboardOverview() {
           {error}
         </div>
       )}
+
+      {(data.bed_summary?.total ?? 0) > 0 ||
+      (data.specialty_chart?.length ?? 0) > 0 ? (
+        <section className={`${cardClass} border-l-4 border-l-navy-500`}>
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-medium text-navy-950">
+                Internação e leitos
+              </h2>
+              {data.bed_summary && data.bed_summary.total > 0 && (
+                <p className="text-sm text-navy-800/60">
+                  {data.bed_summary.ocupado}/{data.bed_summary.total} leitos
+                  ocupados · {data.bed_summary.livre} livres ·{" "}
+                  {data.bed_summary.higienizacao} em higienização
+                </p>
+              )}
+            </div>
+            <Link
+              href="/dashboard/relatorio-pacientes?tab=mapa-leitos"
+              className="text-sm font-medium text-navy-900 hover:underline"
+            >
+              Mapa de leitos →
+            </Link>
+          </div>
+          {data.specialty_chart && data.specialty_chart.length > 0 && (
+            <InpatientSpecialtyChart rows={data.specialty_chart} compact />
+          )}
+          <div className="mt-4 border-t border-navy-900/8 pt-4">
+            <h3 className="text-sm font-semibold text-navy-950">
+              Exames pendentes (internados)
+            </h3>
+            <div className="mt-2">
+              <InpatientPendingLabsPanel />
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       <section className={`${cardClass} border-l-4 border-l-ocean-400 bg-gradient-to-r from-ocean-50/30 to-white`}>
         <div className="mb-4 flex flex-wrap items-end justify-between gap-3">

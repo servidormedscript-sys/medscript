@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   diureseAdequada,
   estabilizado,
@@ -54,6 +55,8 @@ export default function EapProtocol() {
     "quente-umido-grave": "Quente-Úmido / Grave (hipertensivo)",
     "quente-umido-mod": "Quente-Úmido / Moderado",
   };
+
+  useSyncProtocolVitals({ pas, spo2, fr, glasgow, weight: peso });
 
   return (
     <div className="space-y-4">

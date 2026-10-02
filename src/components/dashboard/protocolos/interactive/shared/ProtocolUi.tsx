@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useProtocolInternationBridge } from "@/components/dashboard/protocolos/ProtocolInternationBridge";
 
 export function ProtocolPanel({
   title,
@@ -96,12 +97,18 @@ export function DoseLogButton({
   disabled?: boolean;
   warn?: string | null;
 }) {
+  const bridge = useProtocolInternationBridge();
+
   return (
     <div>
       <button
         type="button"
         disabled={disabled}
-        onClick={onClick}
+        onClick={() => {
+          if (disabled) return;
+          bridge.logEvent(`${label} — ${detail}`);
+          onClick();
+        }}
         className="w-full rounded-lg border border-navy-900/10 bg-navy-50/80 px-4 py-3 text-left text-sm hover:border-ocean-300 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span className="font-semibold text-navy-950">{label}</span>

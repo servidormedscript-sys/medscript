@@ -1,13 +1,17 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
-import type { PatientSex, PatientStatus, RiskLevel } from "@/lib/types/patient";
+import { useEffect, useRef, useState } from "react";
+import { inpatientChartUrl } from "@/lib/dashboard/inpatient-chart-url";
 import {
-  INITIAL_KANBAN_OPTIONS,
-  RISK_LABELS,
-  STATUS_LABELS,
-} from "@/lib/types/patient";
+  clearProtocolInternationTransfer,
+  protocolTransferToAdmissionForm,
+  readProtocolInternationTransfer,
+} from "@/lib/inpatient/protocol-internation";
+import { INPATIENT_SPECIALTY_OPTIONS } from "@/lib/inpatient/specialty";
+import type { InpatientSpecialtyKey } from "@/lib/inpatient/specialty";
+import type { PatientSex, PatientStatus } from "@/lib/types/patient";
+import { INITIAL_KANBAN_OPTIONS, STATUS_LABELS } from "@/lib/types/patient";
 import { meuPacienteGraveT0Url } from "@/lib/dashboard/meu-paciente-grave-url";
 import { formatAge } from "@/lib/utils/age";
 
@@ -16,6 +20,7 @@ type NewPatientModalProps = {
   onCreated: () => void;
   onError: (text: string) => void;
   lockInitialStatus?: PatientStatus;
+  initialOrganizationBed?: { id: string; code: string; unit: string };
 };
 
 const inputClass =
@@ -31,9 +36,11 @@ const defaultForm = {
   diagnosis: "",
   allergies: "",
   medications: "",
+  initial_assessment: "",
   initial_status: "triagem" as PatientStatus,
-  risk_level: "medio" as RiskLevel,
   alta_days: 7,
+  care_specialty: "" as InpatientSpecialtyKey | "",
+  organization_bed_id: "",
 };
 
 export default function NewPatientModal({
@@ -41,6 +48,7 @@ export default function NewPatientModal({
   onCreated,
   onError,
   lockInitialStatus,
+  initialOrganizationBed,
 }: NewPatientModalProps) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -49,9 +57,24 @@ export default function NewPatientModal({
   const [form, setForm] = useState({
     ...defaultForm,
     initial_status: lockInitialStatus ?? defaultForm.initial_status,
+    bed: initialOrganizationBed?.code ?? defaultForm.bed,
+    organization_bed_id: initialOrganizationBed?.id ?? "",
   });
 
   const ageLabel = form.birth_date ? formatAge(form.birth_date) : null;
+
+  useEffect(() => {
+    const transfer = readProtocolInternationTransfer();
+    if (!transfer) return;
+    const prefill = protocolTransferToAdmissionForm(transfer);
+    setForm((f) => ({
+      ...f,
+      diagnosis: prefill.diagnosis || f.diagnosis,
+      initial_assessment: prefill.initial_assessment || f.initial_assessment,
+      weight: prefill.weight || f.weight,
+      initial_status: prefill.initial_status,
+    }));
+  }, []);
 
   async function createPatient(redirectToT0: boolean) {
     if (redirectToT0) {
@@ -60,10 +83,14 @@ export default function NewPatientModal({
       setLoading(true);
     }
 
+    const transfer = readProtocolInternationTransfer();
     const res = await fetch("/api/pacientes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(form),
+      body: JSON.stringify({
+        ...form,
+        internation_seed: transfer ?? undefined,
+      }),
     });
 
     const data = await res.json();
@@ -79,6 +106,13 @@ export default function NewPatientModal({
     if (redirectToT0 && data.episode?.id) {
       onClose();
       router.push(meuPacienteGraveT0Url(data.episode.id));
+      return;
+    }
+
+    if (transfer && data.episode?.id && form.initial_status === "internado") {
+      clearProtocolInternationTransfer();
+      onClose();
+      router.push(inpatientChartUrl(data.episode.id));
       return;
     }
 
@@ -211,11 +245,35 @@ export default function NewPatientModal({
                 <input
                   placeholder="Ex: 12A"
                   value={form.bed}
+                  readOnly={Boolean(initialOrganizationBed)}
                   onChange={(e) => setForm({ ...form, bed: e.target.value })}
                   className={inputClass}
                 />
               </div>
             </div>
+
+            {form.initial_status === "internado" && (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-navy-800/70">
+                  Especialidade
+                </label>
+                <select
+                  value={form.care_specialty}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      care_specialty: e.target.value as InpatientSpecialtyKey | "",
+                    })
+                  }
+                  className={inputClass}
+                >
+                  <option value="">Selecione (ou infira pelo diagnóstico)</option>
+                  {INPATIENT_SPECIALTY_OPTIONS.map((o) => (
+                    <option key={o.key} value={o.key}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="mb-1 block text-xs font-medium text-navy-800/70">
@@ -296,27 +354,10 @@ export default function NewPatientModal({
             )}
 
             {form.initial_status === "internado" && (
-              <div>
-                <label className="mb-1 block text-xs font-medium text-navy-800/70">
-                  Classificação de risco *
-                </label>
-                <select
-                  value={form.risk_level}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      risk_level: e.target.value as RiskLevel,
-                    })
-                  }
-                  className={inputClass}
-                >
-                  {(Object.keys(RISK_LABELS) as RiskLevel[]).map((risk) => (
-                    <option key={risk} value={risk}>
-                      {RISK_LABELS[risk]}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <p className="rounded-md border border-navy-900/8 bg-navy-50/50 px-3 py-2 text-xs text-navy-800/65">
+                Risco e critérios de alta serão calculados no prontuário conforme
+                os dados clínicos registrados.
+              </p>
             )}
 
             <div className="rounded-md border border-navy-900/8 bg-navy-50/50 p-4">

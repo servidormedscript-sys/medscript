@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useReducer, useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import { weightBasedDose, formatMg } from "@/lib/clinical/protocols/dose-utils";
 import { CheckboxField, ProtocolPanel } from "@/components/dashboard/protocolos/interactive/shared/ProtocolUi";
 
@@ -51,6 +52,7 @@ export default function PcrPediatriaProtocol() {
   }, [state.running]);
 
   const w = Number(peso) || 20;
+  useSyncProtocolVitals({ weight: peso });
   const j2 = Math.round(w * 2);
   const j4 = Math.round(w * 4);
   const adren = formatMg(weightBasedDose(w, 0.01, 1));

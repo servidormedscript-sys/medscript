@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { INPATIENT_SPECIALTY_OPTIONS } from "@/lib/inpatient/specialty";
+import type { InpatientSpecialtyKey } from "@/lib/inpatient/specialty";
 import type { KanbanEpisode, Patient, PatientEpisode, PatientSex } from "@/lib/types/patient";
 import { meuPacienteGraveT0Url } from "@/lib/dashboard/meu-paciente-grave-url";
 import { formatAge } from "@/lib/utils/age";
@@ -39,6 +41,7 @@ export default function EditPatientFichaModal({
     diagnosis: episode.diagnosis ?? "",
     allergies: episode.allergies ?? "",
     medications: episode.medications ?? "",
+    care_specialty: (episode.care_specialty ?? "") as InpatientSpecialtyKey | "",
   });
 
   const ageLabel = form.birth_date ? formatAge(form.birth_date) : null;
@@ -73,6 +76,7 @@ export default function EditPatientFichaModal({
         diagnosis: form.diagnosis,
         allergies: form.allergies,
         medications: form.medications,
+        care_specialty: form.care_specialty || null,
       }),
     });
 
@@ -203,6 +207,27 @@ export default function EditPatientFichaModal({
                     className={inputClass}
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-medium text-navy-800/70">
+                  Especialidade
+                </label>
+                <select
+                  value={form.care_specialty}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      care_specialty: e.target.value as InpatientSpecialtyKey | "",
+                    })
+                  }
+                  className={inputClass}
+                >
+                  <option value="">Não informada (pode inferir do diagnóstico)</option>
+                  {INPATIENT_SPECIALTY_OPTIONS.map((o) => (
+                    <option key={o.key} value={o.key}>{o.label}</option>
+                  ))}
+                </select>
               </div>
 
               <div>

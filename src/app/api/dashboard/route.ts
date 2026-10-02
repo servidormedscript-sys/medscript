@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionWithAdmin } from "@/lib/api/require-session";
+import { buildBedMapPayload } from "@/lib/inpatient/bed-map-data";
 import { buildDashboardOverview } from "@/lib/dashboard/overview";
 import { fetchCareItemsByEpisode } from "@/lib/patient-care-fetch";
 import type { KanbanEpisode } from "@/lib/types/patient";
@@ -68,5 +69,14 @@ export async function GET() {
 
   const overview = buildDashboardOverview(episodes, itemsByEpisode);
 
-  return NextResponse.json(overview);
+  try {
+    const bedMap = await buildBedMapPayload(supabase, adminId);
+    return NextResponse.json({
+      ...overview,
+      bed_summary: bedMap.summary,
+      specialty_chart: bedMap.specialty_chart,
+    });
+  } catch {
+    return NextResponse.json(overview);
+  }
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   lactateInterpretation,
   qsofaFromVitals,
@@ -30,6 +31,8 @@ export default function SepseProtocol() {
   const vol = volumeResuscitationMl(pesoN);
   const lacN = Number(lactato) || 0;
   const lac = lacN > 0 ? lactateInterpretation(lacN) : null;
+
+  useSyncProtocolVitals({ fr, pas, weight: peso });
 
   return (
     <div className="space-y-4">

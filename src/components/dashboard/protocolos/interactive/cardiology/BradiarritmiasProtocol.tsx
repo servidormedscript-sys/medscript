@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   ATROPINA_MAX_DOSES,
   COMPROMISSO_LABELS,
@@ -42,6 +43,8 @@ export default function BradiarritmiasProtocol() {
     if (atropinaCount >= ATROPINA_MAX_DOSES) return;
     setAtropinaCount((c) => c + 1);
   }
+
+  useSyncProtocolVitals({ fc, pas, weight: peso });
 
   return (
     <div className="space-y-4">

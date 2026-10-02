@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   acidoValproicoMg,
   BENZO_MAX_DOSES,
@@ -51,6 +52,8 @@ export default function ConvulsaoProtocol() {
     if (benzoTotal >= BENZO_MAX_DOSES) return;
     setBenzoTotal((c) => c + 1);
   }
+
+  useSyncProtocolVitals({ glasgow, weight: peso });
 
   return (
     <div className="space-y-4">

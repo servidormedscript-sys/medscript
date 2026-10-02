@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   ACIDO_TRANEXAMICO_MAX_DOSES,
   classificarObst,
@@ -64,6 +65,8 @@ export default function ObstProtocol() {
   const hidraTeto = avisoTetoDose(hidralazinaN, HIDRALAZINA_MAX_DOSES, "Hidralazina");
   const labTeto = avisoTetoDose(labetalolN, LABETALOL_MAX_DOSES, "Labetalol");
   const txaTeto = avisoTetoDose(txaN, ACIDO_TRANEXAMICO_MAX_DOSES, "Ácido tranexâmico");
+
+  useSyncProtocolVitals({ pas, pad, fc });
 
   return (
     <div className="space-y-4">

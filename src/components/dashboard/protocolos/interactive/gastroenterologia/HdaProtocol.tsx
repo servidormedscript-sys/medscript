@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 import {
   gbsRisco,
   gbsTotal,
@@ -44,6 +45,8 @@ export default function HdaProtocol() {
     icOuHepato: ic || hepatopatia,
   });
   const instavel = instabilidadeHda(Number(pas) || 0, Number(fc) || 0);
+
+  useSyncProtocolVitals({ pas, fc });
 
   return (
     <div className="space-y-4">
