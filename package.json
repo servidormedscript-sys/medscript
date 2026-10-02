@@ -11,7 +11,8 @@
     "supabase:login": "supabase login",
     "supabase:link": "supabase link --project-ref katepfoxlainldspmbfk",
     "supabase:migrations": "supabase migration list",
-    "supabase:push": "supabase db push --linked",
+    "supabase:push": "node scripts/supabase-db-push.mjs",
+    "supabase:push:cli": "supabase db push --linked",
     "supabase:audit": "node scripts/audit-supabase-remote.mjs",
     "supabase:hibp": "node scripts/enable-auth-hibp.mjs",
     "supabase:email-templates": "node scripts/apply-supabase-email-templates.mjs"
