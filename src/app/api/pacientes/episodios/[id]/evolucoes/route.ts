@@ -4,22 +4,11 @@ import {
   getEpisodeForOrg,
 } from "@/lib/api/require-episode";
 import { recordSignedEvolutionSideEffects } from "@/lib/inpatient/evolution-sign";
-import type { EpisodeEvolution } from "@/lib/types/inpatient-chart";
 import type { EvolutionDraftMode } from "@/lib/inpatient/evolution-context";
+import { mapEvolutionRow } from "@/lib/inpatient/evolution-utils";
+import { refreshEpisodeRiskLevel } from "@/lib/inpatient/sync-episode-risk";
 
 type RouteContext = { params: Promise<{ id: string }> };
-
-function mapRow(row: Record<string, unknown>): EpisodeEvolution {
-  return {
-    id: String(row.id),
-    episode_id: String(row.episode_id),
-    content_html: String(row.content_html ?? ""),
-    created_by: row.created_by != null ? String(row.created_by) : null,
-    created_at: String(row.created_at),
-    signed_at: row.signed_at != null ? String(row.signed_at) : null,
-    signed_by: row.signed_by != null ? String(row.signed_by) : null,
-  };
-}
 
 function stripHtml(html: string): string {
   return html
@@ -50,7 +39,7 @@ export async function GET(_request: Request, context: RouteContext) {
 
   return NextResponse.json({
     evolutions: (rows ?? []).map((row) =>
-      mapRow(row as Record<string, unknown>),
+      mapEvolutionRow(row as Record<string, unknown>),
     ),
   });
 }
@@ -67,6 +56,7 @@ export async function POST(request: Request, context: RouteContext) {
     content_html?: string;
     draft_mode?: EvolutionDraftMode;
     sign?: boolean;
+    addendum_of_id?: string;
   };
   try {
     body = await request.json();
@@ -86,6 +76,30 @@ export async function POST(request: Request, context: RouteContext) {
   const signNow = body.sign !== false;
   const now = new Date().toISOString();
 
+  let addendumOfId: string | null = null;
+  if (body.addendum_of_id?.trim()) {
+    const parentId = body.addendum_of_id.trim();
+    const { data: parent } = await supabase
+      .from("episode_evolutions")
+      .select("id, signed_at")
+      .eq("id", parentId)
+      .eq("episode_id", episodeId)
+      .maybeSingle();
+    if (!parent?.signed_at) {
+      return NextResponse.json(
+        { error: "Adendo só pode referenciar evolução já assinada." },
+        { status: 400 },
+      );
+    }
+    addendumOfId = parentId;
+    if (signNow) {
+      return NextResponse.json(
+        { error: "Salve o adendo como rascunho antes de assinar." },
+        { status: 400 },
+      );
+    }
+  }
+
   const { data: row, error } = await supabase
     .from("episode_evolutions")
     .insert({
@@ -94,6 +108,7 @@ export async function POST(request: Request, context: RouteContext) {
       created_by: user.id,
       signed_at: signNow ? now : null,
       signed_by: signNow ? user.id : null,
+      addendum_of_id: addendumOfId,
     })
     .select("*")
     .single();
@@ -102,7 +117,7 @@ export async function POST(request: Request, context: RouteContext) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const evolution = mapRow(row as Record<string, unknown>);
+  const evolution = mapEvolutionRow(row as Record<string, unknown>);
 
   if (signNow) {
     await recordSignedEvolutionSideEffects(supabase, {
@@ -111,6 +126,11 @@ export async function POST(request: Request, context: RouteContext) {
       content_html: html,
       user_id: user.id,
       draft_mode: body.draft_mode ?? null,
+    });
+    const patient = result.episode.patient;
+    await refreshEpisodeRiskLevel(supabase, episodeId, {
+      admissionAt: result.episode.created_at,
+      birthDate: patient?.birth_date ?? null,
     });
   }
 

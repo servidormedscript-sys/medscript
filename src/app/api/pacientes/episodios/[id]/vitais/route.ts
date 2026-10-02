@@ -5,6 +5,7 @@ import {
 } from "@/lib/api/require-episode";
 import { appendTimelineEvent } from "@/lib/inpatient/timeline-db";
 import { summarizeVitalTimeline } from "@/lib/inpatient/timeline-summaries";
+import { refreshEpisodeRiskLevel } from "@/lib/inpatient/sync-episode-risk";
 import { parseVitalRecordInput } from "@/lib/inpatient/validate-vital-input";
 import type { EpisodeVitalRecord } from "@/lib/types/inpatient-chart";
 
@@ -122,6 +123,12 @@ export async function POST(request: Request, context: RouteContext) {
     summary_text: summarizeVitalTimeline(record),
     occurred_at: record.recorded_at,
     source_id: record.id,
+  });
+
+  const patient = result.episode.patient;
+  await refreshEpisodeRiskLevel(supabase, episodeId, {
+    admissionAt: result.episode.created_at,
+    birthDate: patient?.birth_date ?? null,
   });
 
   return NextResponse.json({ record });

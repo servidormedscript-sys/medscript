@@ -3,21 +3,9 @@ import {
   assertChartAccess,
   getEpisodeForOrg,
 } from "@/lib/api/require-episode";
-import type { EpisodeEvolution } from "@/lib/types/inpatient-chart";
+import { mapEvolutionRow } from "@/lib/inpatient/evolution-utils";
 
 type RouteContext = { params: Promise<{ id: string; evoId: string }> };
-
-function mapRow(row: Record<string, unknown>): EpisodeEvolution {
-  return {
-    id: String(row.id),
-    episode_id: String(row.episode_id),
-    content_html: String(row.content_html ?? ""),
-    created_by: row.created_by != null ? String(row.created_by) : null,
-    created_at: String(row.created_at),
-    signed_at: row.signed_at != null ? String(row.signed_at) : null,
-    signed_by: row.signed_by != null ? String(row.signed_by) : null,
-  };
-}
 
 function stripHtml(html: string): string {
   return html
@@ -88,7 +76,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   return NextResponse.json({
-    evolution: mapRow(row as Record<string, unknown>),
+    evolution: mapEvolutionRow(row as Record<string, unknown>),
   });
 }
 

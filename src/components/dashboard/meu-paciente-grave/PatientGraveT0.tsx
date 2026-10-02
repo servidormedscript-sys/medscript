@@ -8,6 +8,7 @@ import {
   COMPLEMENTARY_SECTIONS,
   EXAM_SECTIONS,
 } from "@/lib/clinical/t0-form-config";
+import { summarizeT0PositiveFindings } from "@/lib/clinical/t0-findings-summary";
 import { generateGraveScoring, buildInternacaoNoteFromGrave, type BaselineSnapshot } from "@/lib/clinical/suggestion-rules";
 import type {
   ActivePatientEpisode,
@@ -27,6 +28,11 @@ function formatCpf(cpf: string) {
 
 function hasComplementaryData(complementary: Record<string, boolean>) {
   return Object.values(complementary).some(Boolean);
+}
+
+function vitalNum(value: string): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 type ReportFormSnapshot = {
@@ -436,6 +442,23 @@ export default function PatientGraveT0() {
         initial_assessment: vitalsLine ? `Vitais (T0): ${vitalsLine}` : undefined,
         report_text: `${diag ? `${diag}\n\n` : ""}${vitalsLine ? `Vitais: ${vitalsLine}\n\n` : ""}${report}`,
         weight: vitalSigns.weight,
+        internation_seed: {
+          protocolId: "grave-t0",
+          protocolName: "Meu Paciente Grave",
+          suggestedDiagnosis: diag || "",
+          vitals: {
+            pas: vitalNum(vitalSigns.systolic_bp),
+            fc: vitalNum(vitalSigns.heart_rate),
+            fr: vitalNum(vitalSigns.respiratory_rate),
+            spo2: vitalNum(vitalSigns.spo2),
+            temperature: vitalNum(vitalSigns.temperature),
+            weight: vitalSigns.weight?.trim() || undefined,
+          },
+          freeNote: report,
+          events: [],
+          physicalExamNote: summarizeT0PositiveFindings(findings, complementary),
+          admissionSource: "grave_t0",
+        },
       }),
     });
     const data = await res.json();

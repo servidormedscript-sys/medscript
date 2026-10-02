@@ -7,6 +7,7 @@ import { computeCriticalLabConducts } from "@/lib/inpatient/lab-critical-conduct
 import { computeLabAlerts } from "@/lib/inpatient/lab-alerts";
 import { getAnalyte } from "@/lib/inpatient/lab-analytes";
 import { appendTimelineEvent } from "@/lib/inpatient/timeline-db";
+import { refreshEpisodeRiskLevel } from "@/lib/inpatient/sync-episode-risk";
 import type {
   EpisodeImagingReport,
   EpisodeLabPending,
@@ -227,6 +228,12 @@ export async function POST(request: Request, context: RouteContext) {
     summary_text: summary || "Resultados laboratoriais registrados",
     occurred_at: collectedAt,
     source_id: values[0]?.id ?? null,
+  });
+
+  const patient = result.episode.patient;
+  await refreshEpisodeRiskLevel(supabase, episodeId, {
+    admissionAt: result.episode.created_at,
+    birthDate: patient?.birth_date ?? null,
   });
 
   return NextResponse.json({ values });

@@ -23,6 +23,9 @@ export type ProtocolInternationTransfer = {
   vitals: ProtocolVitalsPayload | null;
   freeNote: string;
   events: ProtocolInternationEvent[];
+  /** Texto livre do exame físico inicial (ex.: achados da T0). */
+  physicalExamNote?: string;
+  admissionSource?: "protocol" | "grave_t0";
   createdAt: string;
 };
 

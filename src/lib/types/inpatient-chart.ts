@@ -64,6 +64,7 @@ export type EpisodeEvolution = {
   created_at: string;
   signed_at: string | null;
   signed_by: string | null;
+  addendum_of_id: string | null;
   author_name?: string | null;
 };
 

@@ -22,3 +22,35 @@ export function signedEvolutionTimestamps(
     .filter((e) => e.signed_at)
     .map((e) => e.signed_at as string);
 }
+
+export function evolutionChronologicalOrder(
+  evolutions: EpisodeEvolution[],
+): EpisodeEvolution[] {
+  return [...evolutions].sort(
+    (a, b) =>
+      new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+  );
+}
+
+export function evolutionDisplayNumber(
+  evolutions: EpisodeEvolution[],
+  ev: EpisodeEvolution,
+): string {
+  const sorted = evolutionChronologicalOrder(evolutions);
+  const idx = sorted.findIndex((e) => e.id === ev.id);
+  return String(Math.max(0, idx) + 1).padStart(3, "0");
+}
+
+export function mapEvolutionRow(row: Record<string, unknown>): EpisodeEvolution {
+  return {
+    id: String(row.id),
+    episode_id: String(row.episode_id),
+    content_html: String(row.content_html ?? ""),
+    created_by: row.created_by != null ? String(row.created_by) : null,
+    created_at: String(row.created_at),
+    signed_at: row.signed_at != null ? String(row.signed_at) : null,
+    signed_by: row.signed_by != null ? String(row.signed_by) : null,
+    addendum_of_id:
+      row.addendum_of_id != null ? String(row.addendum_of_id) : null,
+  };
+}

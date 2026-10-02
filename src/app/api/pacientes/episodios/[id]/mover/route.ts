@@ -4,6 +4,13 @@ import {
   occupyOrganizationBed,
   releaseOrganizationBedForEpisode,
 } from "@/lib/inpatient/bed-sync";
+import {
+  chartNeedsAdmissionSeed,
+  seedAdmissionFromKanbanReport,
+  seedAdmissionFromProtocolTransfer,
+} from "@/lib/inpatient/seed-admission-from-protocol";
+import { refreshEpisodeRiskLevel } from "@/lib/inpatient/sync-episode-risk";
+import type { ProtocolInternationTransfer } from "@/lib/inpatient/protocol-internation";
 import { accumulateStatusSeconds, getCurrentPeriodSeconds } from "@/lib/patient-status-time";
 import {
   ALLOWED_TRANSITIONS,
@@ -33,6 +40,7 @@ export async function POST(request: Request, context: RouteContext) {
     diagnosis?: string;
     initial_assessment?: string;
     organization_bed_id?: string;
+    internation_seed?: Omit<ProtocolInternationTransfer, "createdAt">;
   };
 
   try {
@@ -98,8 +106,8 @@ export async function POST(request: Request, context: RouteContext) {
     observacao_seconds: accumulated.observacao_seconds,
     internado_seconds: accumulated.internado_seconds,
   };
-  if (to_status === "internado") {
-    updateData.risk_level = risk_level ?? null;
+  if (to_status === "internado" && risk_level) {
+    updateData.risk_level = risk_level;
   }
 
   if (to_status === "alta_recente") {
@@ -149,12 +157,56 @@ export async function POST(request: Request, context: RouteContext) {
     }
   }
 
+  if (to_status === "internado") {
+    const patient = updated.patient as import("@/lib/types/patient").Patient;
+    const ep = updated as import("@/lib/types/patient").PatientEpisode;
+    if (body.internation_seed) {
+      await seedAdmissionFromProtocolTransfer(
+        supabase,
+        ep,
+        patient,
+        body.internation_seed,
+        user!.id,
+      );
+    } else if (
+      report_text?.trim() &&
+      (await chartNeedsAdmissionSeed(supabase, episodeId))
+    ) {
+      await seedAdmissionFromKanbanReport(
+        supabase,
+        ep,
+        patient,
+        report_text.trim(),
+        user!.id,
+      );
+    }
+  }
+
+  if (to_status === "internado") {
+    const patient = updated.patient as import("@/lib/types/patient").Patient;
+    await refreshEpisodeRiskLevel(supabase, episodeId, {
+      admissionAt: updated.created_at,
+      birthDate: patient?.birth_date ?? null,
+    });
+    const { data: riskRefreshed } = await supabase
+      .from("patient_episodes")
+      .select("*, patient:patients (*)")
+      .eq("id", episodeId)
+      .single();
+    if (riskRefreshed) {
+      Object.assign(updated, riskRefreshed);
+    }
+  }
+
   await supabase.from("patient_movements").insert({
     episode_id: episodeId,
     from_status: fromStatus,
     to_status,
     report_text: report_text?.trim() ?? "",
-    risk_level: to_status === "internado" ? risk_level ?? null : null,
+    risk_level:
+      to_status === "internado"
+        ? (updated as { risk_level?: RiskLevel | null }).risk_level ?? risk_level ?? null
+        : null,
     alta_days: to_status === "alta_recente" ? alta_days : null,
     duration_seconds:
       fromStatus === "triagem" ||

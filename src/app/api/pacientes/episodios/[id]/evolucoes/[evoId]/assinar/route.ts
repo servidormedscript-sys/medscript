@@ -5,21 +5,10 @@ import {
 } from "@/lib/api/require-episode";
 import { recordSignedEvolutionSideEffects } from "@/lib/inpatient/evolution-sign";
 import type { EvolutionDraftMode } from "@/lib/inpatient/evolution-context";
-import type { EpisodeEvolution } from "@/lib/types/inpatient-chart";
+import { mapEvolutionRow } from "@/lib/inpatient/evolution-utils";
+import { refreshEpisodeRiskLevel } from "@/lib/inpatient/sync-episode-risk";
 
 type RouteContext = { params: Promise<{ id: string; evoId: string }> };
-
-function mapRow(row: Record<string, unknown>): EpisodeEvolution {
-  return {
-    id: String(row.id),
-    episode_id: String(row.episode_id),
-    content_html: String(row.content_html ?? ""),
-    created_by: row.created_by != null ? String(row.created_by) : null,
-    created_at: String(row.created_at),
-    signed_at: row.signed_at != null ? String(row.signed_at) : null,
-    signed_by: row.signed_by != null ? String(row.signed_by) : null,
-  };
-}
 
 export async function POST(request: Request, context: RouteContext) {
   const { id: episodeId, evoId } = await context.params;
@@ -81,13 +70,19 @@ export async function POST(request: Request, context: RouteContext) {
     );
   }
 
-  const evolution = mapRow(row as Record<string, unknown>);
+  const evolution = mapEvolutionRow(row as Record<string, unknown>);
   await recordSignedEvolutionSideEffects(supabase, {
     episode_id: episodeId,
     evolution_id: evolution.id,
     content_html: evolution.content_html,
     user_id: user.id,
     draft_mode: body.draft_mode ?? null,
+  });
+
+  const patient = result.episode.patient;
+  await refreshEpisodeRiskLevel(supabase, episodeId, {
+    admissionAt: result.episode.created_at,
+    birthDate: patient?.birth_date ?? null,
   });
 
   return NextResponse.json({ evolution });

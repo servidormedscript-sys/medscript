@@ -9,6 +9,7 @@ import { loadClinicalBundles } from "@/lib/inpatient/load-clinical-bundles";
 import { fetchCareItemsByEpisode } from "@/lib/patient-care-fetch";
 import type { KanbanEpisode, PatientSex, PatientStatus, RiskLevel } from "@/lib/types/patient";
 import { seedAdmissionFromProtocolTransfer } from "@/lib/inpatient/seed-admission-from-protocol";
+import { refreshEpisodeRiskLevel } from "@/lib/inpatient/sync-episode-risk";
 import type { ProtocolInternationTransfer } from "@/lib/inpatient/protocol-internation";
 import { computeCriticalLabConducts } from "@/lib/inpatient/lab-critical-conduct";
 import { computeLabAlerts } from "@/lib/inpatient/lab-alerts";
@@ -370,6 +371,10 @@ export async function POST(request: Request) {
         body.internation_seed,
         user!.id,
       );
+      await refreshEpisodeRiskLevel(supabase, episode.id, {
+        admissionAt: episode.created_at,
+        birthDate: patient.birth_date,
+      });
     }
     return NextResponse.json(
       { patient, episode: refreshed ?? episode },
@@ -385,6 +390,10 @@ export async function POST(request: Request) {
       body.internation_seed,
       user!.id,
     );
+    await refreshEpisodeRiskLevel(supabase, episode.id, {
+      admissionAt: episode.created_at,
+      birthDate: patient.birth_date,
+    });
   }
 
   return NextResponse.json({ patient, episode }, { status: 201 });

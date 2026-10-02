@@ -105,8 +105,9 @@ async function main() {
     { table: "episode_evolutions", col: "signed_at", label: "032 assinatura evolução" },
     { table: "episode_conduct", col: "no_specific_treatment", label: "033 sem tratamento específico" },
     { table: "episode_internacao", col: "finalized_at", label: "034 AIH finalizada" },
+    { table: "episode_evolutions", col: "addendum_of_id", label: "035 adendo evolução" },
   ];
-  console.log("\nColunas migrations 032–034:");
+  console.log("\nColunas migrations 032–035:");
   for (const { table, col, label } of colChecks) {
     const { error } = await admin.from(table).select(col, { head: true, count: "exact" });
     console.log(`  ${label}: ${error ? `PENDENTE — ${error.message}` : "OK"}`);

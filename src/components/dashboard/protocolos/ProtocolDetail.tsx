@@ -10,6 +10,7 @@ import { validatePatientParams } from "@/lib/clinical/protocols/dose-utils";
 import type { ClinicalProtocol } from "@/lib/clinical/protocols/types";
 import PatientParamsForm from "./PatientParamsForm";
 import ProtocolDoseResults from "./ProtocolDoseResults";
+import ProtocolAdmissionVitalsBar from "./ProtocolAdmissionVitalsBar";
 import ProtocolInternarButton from "./ProtocolInternarButton";
 import { ProtocolInternationProvider } from "./ProtocolInternationBridge";
 
@@ -88,6 +89,8 @@ export default function ProtocolDetail({ protocol }: ProtocolDetailProps) {
         protocolName={protocol.name}
         suggestedDiagnosis={protocol.keywords[0] ? `${protocol.name}` : ""}
       />
+
+      {interactive ? <ProtocolAdmissionVitalsBar /> : null}
 
       {InteractiveModule ? <InteractiveModule /> : null}
 

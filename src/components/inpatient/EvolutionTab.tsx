@@ -15,6 +15,7 @@ import {
 } from "@/lib/inpatient/evolution-context";
 import { checkRegulationCompleteness } from "@/lib/inpatient/regulation-completeness";
 import {
+  evolutionDisplayNumber,
   isEvolutionSigned,
   signedEvolutionTimestamps,
 } from "@/lib/inpatient/evolution-utils";
@@ -108,6 +109,7 @@ export default function EvolutionTab({
     Record<string, { status: TreatmentResponseStatus; notes: string }>
   >({});
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
+  const [addendumParentId, setAddendumParentId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -316,6 +318,19 @@ export default function EvolutionTab({
     );
   }
 
+  function startAddendum(parent: EpisodeEvolution) {
+    if (!isEvolutionSigned(parent)) return;
+    const when = new Date(parent.signed_at ?? parent.created_at).toLocaleString(
+      "pt-BR",
+    );
+    setAddendumParentId(parent.id);
+    setEditingDraftId(null);
+    setEditorHtml(
+      `<p><strong>Adendo</strong> à evolução #${evolutionDisplayNumber(evolutions, parent)} (${when}):</p><p><br></p>`,
+    );
+    setError(null);
+  }
+
   async function saveDraft() {
     setSaving(true);
     setError(null);
@@ -328,6 +343,9 @@ export default function EvolutionTab({
       body: JSON.stringify({
         content_html: editorHtml,
         sign: false,
+        ...(addendumParentId && !editingDraftId
+          ? { addendum_of_id: addendumParentId }
+          : {}),
       }),
     });
     const data = await res.json();
@@ -338,10 +356,16 @@ export default function EvolutionTab({
     }
     mergeEvolutionList(data.evolution);
     setEditingDraftId(data.evolution.id);
+    if (addendumParentId) setAddendumParentId(null);
   }
 
   async function signEvolution() {
+    const draftEv = editingDraftId
+      ? evolutions.find((e) => e.id === editingDraftId)
+      : null;
+    const isAddendum = Boolean(addendumParentId || draftEv?.addendum_of_id);
     if (
+      !isAddendum &&
       modeUsesRegulationCheck(suggestedMode) &&
       pendencies.length > 0
     ) {
@@ -694,9 +718,11 @@ export default function EvolutionTab({
             {saving ? "Assinando..." : "Assinar evolução"}
           </button>
         </div>
-        {editingDraftId && (
+        {(editingDraftId || addendumParentId) && (
           <p className="mt-2 text-xs text-navy-800/60">
-            Editando rascunho — após assinar, o texto fica imutável no prontuário.
+            {addendumParentId
+              ? "Rascunho de adendo — salve e assine para registrar a correção."
+              : "Editando rascunho — após assinar, o texto fica imutável no prontuário."}
           </p>
         )}
       </section>
@@ -713,10 +739,18 @@ export default function EvolutionTab({
                 className="rounded-md border border-navy-900/8 bg-white px-4 py-3"
               >
                 <div className="flex flex-wrap items-center gap-2 text-xs text-navy-800/55">
+                  <span className="font-medium text-navy-900">
+                    #{evolutionDisplayNumber(evolutions, ev)}
+                  </span>
                   <span>
                     {new Date(ev.created_at).toLocaleString("pt-BR")}
                     {ev.author_name ? ` · ${ev.author_name}` : ""}
                   </span>
+                  {ev.addendum_of_id && (
+                    <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-900">
+                      Adendo
+                    </span>
+                  )}
                   {isEvolutionSigned(ev) ? (
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-900">
                       Assinada
@@ -728,6 +762,15 @@ export default function EvolutionTab({
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-950">
                       Rascunho
                     </span>
+                  )}
+                  {isEvolutionSigned(ev) && (
+                    <button
+                      type="button"
+                      onClick={() => startAddendum(ev)}
+                      className="text-[11px] font-medium text-navy-900 underline"
+                    >
+                      Adicionar adendo
+                    </button>
                   )}
                   {!isEvolutionSigned(ev) && (
                     <>
