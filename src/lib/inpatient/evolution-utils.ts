@@ -52,5 +52,9 @@ export function mapEvolutionRow(row: Record<string, unknown>): EpisodeEvolution 
     signed_by: row.signed_by != null ? String(row.signed_by) : null,
     addendum_of_id:
       row.addendum_of_id != null ? String(row.addendum_of_id) : null,
+    addendum_reason:
+      row.addendum_reason != null && String(row.addendum_reason).trim()
+        ? String(row.addendum_reason).trim()
+        : null,
   };
 }

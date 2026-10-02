@@ -421,6 +421,26 @@ export default function ConductTab({
             explícita para regulação/CORE)
           </span>
         </label>
+        <label className="mt-3 flex items-start gap-2 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={conduct.no_treatment_response_waiver}
+            onChange={(e) => {
+              onConductChange({
+                ...conduct,
+                no_treatment_response_waiver: e.target.checked,
+              });
+              saveConduct({
+                no_treatment_response_waiver: e.target.checked,
+              });
+            }}
+          />
+          <span>
+            Não há necessidade de registrar resposta ao tratamento por problema
+            neste momento (dispensa explícita — 5.3)
+          </span>
+        </label>
         <label className="mt-3 block text-sm">
           <span className="text-xs text-navy-800/60">
             Especialidade / recurso necessário

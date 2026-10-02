@@ -98,6 +98,7 @@ async function ensureGeneralOrders(
       diet: String(row.diet),
       vitals_frequency: String(row.vitals_frequency),
       padua_score: (row.padua_score as Record<string, boolean>) ?? {},
+      caprini_score: (row.caprini_score as Record<string, boolean>) ?? {},
       updated_at: String(row.updated_at),
     };
   }
@@ -115,6 +116,7 @@ async function ensureGeneralOrders(
     diet: String(inserted!.diet),
     vitals_frequency: String(inserted!.vitals_frequency),
     padua_score: (inserted!.padua_score as Record<string, boolean>) ?? {},
+    caprini_score: (inserted!.caprini_score as Record<string, boolean>) ?? {},
     updated_at: String(inserted!.updated_at),
   };
 }

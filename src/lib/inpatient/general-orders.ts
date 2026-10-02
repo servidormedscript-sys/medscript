@@ -69,6 +69,45 @@ export function paduaHighRisk(flags: PaduaFlags): boolean {
   return scorePadua(flags) >= 4;
 }
 
+export type CapriniFlags = Record<string, boolean>;
+
+/** Subconjunto do Caprini (cirúrgico) — pontos conforme especificação 2.5. */
+export const CAPRINI_ITEMS: { id: string; label: string; points: number }[] = [
+  { id: "idade_41_60", label: "Idade 41–60 anos", points: 1 },
+  { id: "cirurgia_menor", label: "Cirurgia menor planejada", points: 1 },
+  { id: "varizes", label: "Varizes / edema de MMII", points: 1 },
+  { id: "obesidade", label: "Obesidade (IMC ≥ 30)", points: 1 },
+  { id: "iam", label: "IAM agudo", points: 1 },
+  { id: "icc", label: "IC / insuficiência respiratória", points: 1 },
+  { id: "sepse", label: "Sepse / pneumonia grave", points: 1 },
+  { id: "idade_61_74", label: "Idade 61–74 anos", points: 2 },
+  { id: "cirurgia_maior", label: "Cirurgia maior > 45 min", points: 2 },
+  { id: "cancer", label: "Neoplasia maligna ativa", points: 2 },
+  { id: "laparoscopia", label: "Laparoscopia > 45 min", points: 2 },
+  { id: "idade_75", label: "Idade ≥ 75 anos", points: 3 },
+  { id: "tev_previo", label: "TEV/TVP prévio", points: 3 },
+  { id: "trombofilia", label: "Trombofilia conhecida", points: 3 },
+  { id: "avc_recente", label: "AVC < 1 mês", points: 5 },
+  { id: "trauma_multiplo", label: "Trauma múltiplo", points: 5 },
+  { id: "artroplastia", label: "Artroplastia / fratura de quadril", points: 5 },
+  { id: "lesao_medular", label: "Lesão medular aguda < 1 mês", points: 5 },
+];
+
+export function scoreCaprini(flags: CapriniFlags): number {
+  let total = 0;
+  for (const item of CAPRINI_ITEMS) {
+    if (flags[item.id]) total += item.points;
+  }
+  return total;
+}
+
+export function capriniRiskLabel(total: number): string {
+  if (total === 0) return "Risco muito baixo — deambulação precoce";
+  if (total <= 2) return "Risco baixo — considerar profilaxia mecânica";
+  if (total <= 4) return "Risco moderado — farmacológica ou mecânica";
+  return "Risco alto — farmacológica + mecânica";
+}
+
 export function suggestTevProphylaxis(input: {
   padua: PaduaFlags;
   ageYears: number | null;
@@ -102,4 +141,36 @@ export function suggestTevProphylaxis(input: {
     return "Alto risco Padua (≥4): Enoxaparina 20mg SC 1x/dia (ajuste renal/idade/peso) ou HNF 5.000UI SC 12/12h — revise antes de prescrever.";
   }
   return "Alto risco Padua (≥4): Enoxaparina 40mg SC 1x/dia — revise antes de prescrever.";
+}
+
+export function suggestCombinedTevProphylaxis(input: {
+  padua: PaduaFlags;
+  caprini: CapriniFlags;
+  ageYears: number | null;
+  weightKg: number | null;
+  creatinineMgDl?: number | null;
+  sexFemale?: boolean;
+}): string {
+  const paduaMsg = suggestTevProphylaxis({
+    padua: input.padua,
+    ageYears: input.ageYears,
+    weightKg: input.weightKg,
+    creatinineMgDl: input.creatinineMgDl,
+    sexFemale: input.sexFemale,
+  });
+  const capTotal = scoreCaprini(input.caprini);
+  const capLabel = capriniRiskLabel(capTotal);
+  const capDetail =
+    capTotal > 0
+      ? `Caprini ${capTotal} pts — ${capLabel}.`
+      : "Caprini: nenhum fator marcado.";
+
+  if (paduaHighRisk(input.padua)) {
+    return `${paduaMsg} ${capDetail}`;
+  }
+  if (capTotal >= 3) {
+    return `${capDetail} Revise dose/ajuste renal (Cockcroft-Gault) antes de prescrever.`;
+  }
+  if (paduaMsg) return `${paduaMsg} ${capDetail}`;
+  return capDetail;
 }

@@ -15,6 +15,7 @@ function mapOrders(row: Record<string, unknown>): EpisodeGeneralOrders {
     diet: String(row.diet),
     vitals_frequency: String(row.vitals_frequency),
     padua_score: (row.padua_score as Record<string, boolean>) ?? {},
+    caprini_score: (row.caprini_score as Record<string, boolean>) ?? {},
     updated_at: String(row.updated_at),
   };
 }
@@ -47,6 +48,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     diet: body.diet,
     vitals_frequency: body.vitals_frequency,
     padua_score: body.padua_score,
+    caprini_score: body.caprini_score,
     updated_at: new Date().toISOString(),
   };
 

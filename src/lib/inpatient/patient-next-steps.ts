@@ -125,7 +125,7 @@ export function buildPatientNextSteps(input: {
     steps.push({
       id: "padua-empty",
       priority: "attention",
-      text: "Preencher escore de TEV (Padua) na aba Conduta.",
+      text: "Preencher escore de TEV (Padua ou Caprini) na aba Conduta ou Prescrição.",
       tab: "conduta",
     });
   }

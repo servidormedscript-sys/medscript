@@ -65,6 +65,7 @@ export type EpisodeEvolution = {
   signed_at: string | null;
   signed_by: string | null;
   addendum_of_id: string | null;
+  addendum_reason: string | null;
   author_name?: string | null;
 };
 
@@ -137,6 +138,7 @@ export type EpisodeConduct = {
   transfer_class_justification: string;
   transfer_class_confirmed: boolean;
   no_specific_treatment: boolean;
+  no_treatment_response_waiver: boolean;
   updated_at: string;
 };
 
@@ -209,6 +211,7 @@ export type EpisodeGeneralOrders = {
   diet: string;
   vitals_frequency: string;
   padua_score: Record<string, boolean>;
+  caprini_score: Record<string, boolean>;
   updated_at: string;
 };
 

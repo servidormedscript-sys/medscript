@@ -4,7 +4,13 @@ export type EvolutionKeywordSuggestion = {
   suggestionHtml: string;
   medications: { name: string; detail: string }[];
   warning?: string;
+  /** Link interno para ferramenta/protocolo relacionado. */
+  protocolHref?: string;
+  protocolLinkLabel?: string;
 };
+
+export const DRIP_CALCULATOR_PROTOCOL_HREF =
+  "/dashboard/protocolos-clinicos?protocol=calculadora-gotejamento";
 
 const DISCLAIMER =
   "Detectado pelo texto da evolução — sugestão por palavra-chave, revise antes de usar.";
@@ -16,13 +22,17 @@ const RULES: {
   suggestion: string;
   medications: { name: string; detail: string }[];
   warning?: string;
+  protocolHref?: string;
+  protocolLinkLabel?: string;
 }[] = [
   {
     id: "hipotensao",
     pattern: /\b(hipotens[aã]o|choque)\b/i,
     triggerLabel: "Hipotensão / choque",
     suggestion:
-      "Noradrenalina 0,05–1,0 mcg/kg/min titulada pela PAM (use a calculadora de gotejo do protocolo).",
+      "Noradrenalina 0,05–1,0 mcg/kg/min titulada pela PAM — use a calculadora de gotejamento.",
+    protocolHref: DRIP_CALCULATOR_PROTOCOL_HREF,
+    protocolLinkLabel: "Abrir calculadora de gotejamento",
     medications: [
       {
         name: "Noradrenalina",
@@ -89,6 +99,8 @@ export function detectEvolutionKeywordSuggestions(
       suggestionHtml: `<p>${rule.suggestion}</p>`,
       medications: rule.medications,
       warning: rule.warning,
+      protocolHref: rule.protocolHref,
+      protocolLinkLabel: rule.protocolLinkLabel,
     });
   }
   return out;

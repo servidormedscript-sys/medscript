@@ -5,6 +5,8 @@ import { calculateProtocol } from "@/lib/clinical/protocols/calculators";
 import { validatePatientParams } from "@/lib/clinical/protocols/dose-utils";
 import PatientParamsForm from "@/components/dashboard/protocolos/PatientParamsForm";
 import { CheckboxField, ProtocolPanel } from "@/components/dashboard/protocolos/interactive/shared/ProtocolUi";
+import ProtocolSharedVitalsFields from "@/components/dashboard/protocolos/interactive/shared/ProtocolSharedVitalsFields";
+import { useSyncProtocolVitals } from "@/lib/inpatient/use-sync-protocol-vitals";
 
 type Props = {
   protocolId: string;
@@ -42,9 +44,14 @@ export default function ProtocolCalcAssist({
     };
   }, [protocolId, weightKg, ageYears, ageMonths]);
 
+  useSyncProtocolVitals({ weight: weightKg });
+
   return (
     <div className="space-y-4">
       {children}
+      <ProtocolPanel title="Sinais vitais para internação (opcional)">
+        <ProtocolSharedVitalsFields />
+      </ProtocolPanel>
       <PatientParamsForm
         weightKg={weightKg}
         ageYears={ageYears}

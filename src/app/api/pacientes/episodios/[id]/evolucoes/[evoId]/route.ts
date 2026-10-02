@@ -22,7 +22,7 @@ export async function PATCH(request: Request, context: RouteContext) {
   const denied = assertChartAccess(result.episode);
   if (denied) return denied;
 
-  let body: { content_html?: string };
+  let body: { content_html?: string; addendum_reason?: string };
   try {
     body = await request.json();
   } catch {
@@ -59,9 +59,23 @@ export async function PATCH(request: Request, context: RouteContext) {
     );
   }
 
+  const patch: { content_html: string; addendum_reason?: string } = {
+    content_html: html,
+  };
+  if (existing.addendum_of_id) {
+    const reason = body.addendum_reason?.trim() ?? "";
+    if (!reason) {
+      return NextResponse.json(
+        { error: "Informe o motivo do adendo." },
+        { status: 400 },
+      );
+    }
+    patch.addendum_reason = reason;
+  }
+
   const { data: row, error } = await supabase
     .from("episode_evolutions")
-    .update({ content_html: html })
+    .update(patch)
     .eq("id", evoId)
     .eq("episode_id", episodeId)
     .is("signed_at", null)

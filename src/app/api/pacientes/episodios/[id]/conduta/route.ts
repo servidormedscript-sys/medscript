@@ -49,6 +49,7 @@ function mapConduct(row: Record<string, unknown>): EpisodeConduct {
     ),
     transfer_class_confirmed: Boolean(row.transfer_class_confirmed),
     no_specific_treatment: Boolean(row.no_specific_treatment),
+    no_treatment_response_waiver: Boolean(row.no_treatment_response_waiver),
     updated_at: String(row.updated_at),
   };
 }
@@ -84,6 +85,7 @@ const DEFAULT_CONDUCT = (episodeId: string): EpisodeConduct => ({
   transfer_class_justification: "",
   transfer_class_confirmed: false,
   no_specific_treatment: false,
+  no_treatment_response_waiver: false,
   updated_at: new Date().toISOString(),
 });
 
@@ -148,6 +150,7 @@ export async function PATCH(request: Request, context: RouteContext) {
     transfer_class_justification?: string;
     transfer_class_confirmed?: boolean;
     no_specific_treatment?: boolean;
+    no_treatment_response_waiver?: boolean;
   };
 
   try {
@@ -218,6 +221,9 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
   if (body.no_specific_treatment !== undefined) {
     patch.no_specific_treatment = body.no_specific_treatment;
+  }
+  if (body.no_treatment_response_waiver !== undefined) {
+    patch.no_treatment_response_waiver = body.no_treatment_response_waiver;
   }
 
   let row;

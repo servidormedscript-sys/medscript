@@ -14,10 +14,12 @@ import {
 import {
   DIET_OPTIONS,
   GENERAL_ORDER_ITEMS,
+  CAPRINI_ITEMS,
   PADUA_ITEMS,
   paduaHighRisk,
+  scoreCaprini,
   scorePadua,
-  suggestTevProphylaxis,
+  suggestCombinedTevProphylaxis,
   VITALS_FREQUENCY_OPTIONS,
 } from "@/lib/inpatient/general-orders";
 import { parseWeightKg } from "@/lib/inpatient/parse-weight";
@@ -125,8 +127,10 @@ export default function PrescriptionTab({
   const reconDone = reconciliation.length > 0 && reconPending.length === 0;
 
   const paduaTotal = scorePadua(generalOrders.padua_score);
-  const tevSuggestion = suggestTevProphylaxis({
+  const capriniTotal = scoreCaprini(generalOrders.caprini_score);
+  const tevSuggestion = suggestCombinedTevProphylaxis({
     padua: generalOrders.padua_score,
+    caprini: generalOrders.caprini_score,
     ageYears: age?.years ?? null,
     weightKg,
     sexFemale: patient.sex === "feminino",
@@ -564,9 +568,36 @@ export default function PrescriptionTab({
         {tevSuggestion && (
           <p className="mt-3 text-sm text-navy-800">{tevSuggestion}</p>
         )}
-        <p className="mt-1 text-[11px] text-navy-800/50">
-          Escore Caprini (cirúrgico) — em implementação futura.
+      </section>
+
+      <section className="rounded-lg border border-navy-900/8 bg-white p-4">
+        <h3 className="text-sm font-semibold text-navy-950">
+          Profilaxia de TEV — Caprini (cirúrgico)
+        </h3>
+        <p className="text-xs text-navy-800/55">
+          Pontuação: {capriniTotal}
         </p>
+        <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+          {CAPRINI_ITEMS.map((item) => (
+            <li key={item.id}>
+              <label className="flex gap-2 text-xs text-navy-900">
+                <input
+                  type="checkbox"
+                  checked={Boolean(generalOrders.caprini_score[item.id])}
+                  onChange={(e) =>
+                    saveGeneralOrders({
+                      caprini_score: {
+                        ...generalOrders.caprini_score,
+                        [item.id]: e.target.checked,
+                      },
+                    })
+                  }
+                />
+                {item.label} (+{item.points})
+              </label>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <section>

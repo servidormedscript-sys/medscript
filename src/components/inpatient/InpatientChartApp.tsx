@@ -300,7 +300,10 @@ export default function InpatientChartApp({
             episode={episode}
             paduaFilled={Boolean(
               generalOrders &&
-                Object.values(generalOrders.padua_score ?? {}).some(Boolean),
+                (Object.values(generalOrders.padua_score ?? {}).some(Boolean) ||
+                  Object.values(generalOrders.caprini_score ?? {}).some(
+                    Boolean,
+                  )),
             )}
             problems={problems}
             comorbidities={
@@ -368,6 +371,7 @@ export default function InpatientChartApp({
             labValues={labBundle.values}
             imagingReports={labBundle.imaging}
             conduct={conduct}
+            onConductChange={setConduct}
             comorbidities={comorbidities}
             problems={problems}
             dischargeConfirmed={Boolean(discharge?.confirmed_at)}

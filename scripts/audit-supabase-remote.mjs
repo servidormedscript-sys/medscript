@@ -106,8 +106,11 @@ async function main() {
     { table: "episode_conduct", col: "no_specific_treatment", label: "033 sem tratamento específico" },
     { table: "episode_internacao", col: "finalized_at", label: "034 AIH finalizada" },
     { table: "episode_evolutions", col: "addendum_of_id", label: "035 adendo evolução" },
+    { table: "episode_conduct", col: "no_treatment_response_waiver", label: "036 dispensa resposta tratamento" },
+    { table: "episode_general_orders", col: "caprini_score", label: "036 Caprini TEV" },
+    { table: "episode_evolutions", col: "addendum_reason", label: "037 motivo adendo" },
   ];
-  console.log("\nColunas migrations 032–035:");
+  console.log("\nColunas migrations 032–037:");
   for (const { table, col, label } of colChecks) {
     const { error } = await admin.from(table).select(col, { head: true, count: "exact" });
     console.log(`  ${label}: ${error ? `PENDENTE — ${error.message}` : "OK"}`);

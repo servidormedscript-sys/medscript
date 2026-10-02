@@ -57,6 +57,7 @@ export async function POST(request: Request, context: RouteContext) {
     draft_mode?: EvolutionDraftMode;
     sign?: boolean;
     addendum_of_id?: string;
+    addendum_reason?: string;
   };
   try {
     body = await request.json();
@@ -77,8 +78,17 @@ export async function POST(request: Request, context: RouteContext) {
   const now = new Date().toISOString();
 
   let addendumOfId: string | null = null;
+  let addendumReason: string | null = null;
   if (body.addendum_of_id?.trim()) {
     const parentId = body.addendum_of_id.trim();
+    const reason = body.addendum_reason?.trim() ?? "";
+    if (!reason) {
+      return NextResponse.json(
+        { error: "Informe o motivo do adendo." },
+        { status: 400 },
+      );
+    }
+    addendumReason = reason;
     const { data: parent } = await supabase
       .from("episode_evolutions")
       .select("id, signed_at")
@@ -109,6 +119,7 @@ export async function POST(request: Request, context: RouteContext) {
       signed_at: signNow ? now : null,
       signed_by: signNow ? user.id : null,
       addendum_of_id: addendumOfId,
+      addendum_reason: addendumOfId ? addendumReason : null,
     })
     .select("*")
     .single();

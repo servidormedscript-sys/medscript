@@ -1,5 +1,11 @@
 import { hoursSinceLastEvolution } from "@/lib/inpatient/evolution-delay";
-import type { EpisodeConduct, EpisodePhysicalExam, EpisodePrescription } from "@/lib/types/inpatient-chart";
+import type {
+  EpisodeConduct,
+  EpisodePhysicalExam,
+  EpisodePrescription,
+  EpisodeProblem,
+  EpisodeTreatmentResponse,
+} from "@/lib/types/inpatient-chart";
 import type { PatientEpisode } from "@/lib/types/patient";
 
 export type RegulationPendency = {
@@ -15,6 +21,9 @@ export function checkRegulationCompleteness(input: {
   physicalExams: EpisodePhysicalExam[];
   prescriptions: EpisodePrescription[];
   noSpecificTreatmentAcknowledged?: boolean;
+  activeProblems?: EpisodeProblem[];
+  treatmentResponses?: EpisodeTreatmentResponse[];
+  noTreatmentResponseWaiver?: boolean;
 }): RegulationPendency[] {
   const missing: RegulationPendency[] = [];
 
@@ -67,6 +76,22 @@ export function checkRegulationCompleteness(input: {
       label:
         "Classificação médica da transferência confirmada na aba Conduta",
     });
+  }
+
+  const activeProblems =
+    input.activeProblems?.filter((p) => p.active) ?? [];
+  if (activeProblems.length > 0 && !input.noTreatmentResponseWaiver) {
+    const responded = new Set(
+      (input.treatmentResponses ?? []).map((r) => r.problem_id),
+    );
+    const missingProblems = activeProblems.filter((p) => !responded.has(p.id));
+    if (missingProblems.length > 0) {
+      missing.push({
+        id: "treatment_response",
+        label:
+          "Resposta ao tratamento registrada para cada problema ativo (ou marcar dispensa na aba Evolução/Conduta)",
+      });
+    }
   }
 
   return missing;

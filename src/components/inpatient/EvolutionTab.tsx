@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { comorbidityLabels } from "@/lib/inpatient/comorbidities";
 import { buildChartTimeline, formatTimelineBlock } from "@/lib/inpatient/chart-timeline";
@@ -61,6 +62,7 @@ type Props = {
   labValues?: EpisodeLabValue[];
   imagingReports?: EpisodeImagingReport[];
   conduct: EpisodeConduct | null;
+  onConductChange?: (conduct: EpisodeConduct) => void;
   comorbidities?: EpisodeComorbidities | null;
   problems: EpisodeProblem[];
   dischargeConfirmed: boolean;
@@ -86,6 +88,7 @@ export default function EvolutionTab({
   labValues = [],
   imagingReports = [],
   conduct,
+  onConductChange,
   comorbidities,
   problems,
   dischargeConfirmed,
@@ -110,6 +113,7 @@ export default function EvolutionTab({
   >({});
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [addendumParentId, setAddendumParentId] = useState<string | null>(null);
+  const [addendumReason, setAddendumReason] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -174,6 +178,9 @@ export default function EvolutionTab({
       physicalExams,
       prescriptions,
       noSpecificTreatmentAcknowledged: conduct?.no_specific_treatment,
+      activeProblems: problems,
+      treatmentResponses,
+      noTreatmentResponseWaiver: conduct?.no_treatment_response_waiver,
     });
   }, [
     conduct,
@@ -182,7 +189,10 @@ export default function EvolutionTab({
     evolutions,
     physicalExams,
     prescriptions,
+    problems,
+    treatmentResponses,
     conduct?.no_specific_treatment,
+    conduct?.no_treatment_response_waiver,
   ]);
 
   const draftCtx = useMemo(
@@ -325,13 +335,31 @@ export default function EvolutionTab({
     );
     setAddendumParentId(parent.id);
     setEditingDraftId(null);
+    setAddendumReason("");
     setEditorHtml(
-      `<p><strong>Adendo</strong> à evolução #${evolutionDisplayNumber(evolutions, parent)} (${when}):</p><p><br></p>`,
+      `<p><strong>Texto do adendo</strong> — evolução #${evolutionDisplayNumber(evolutions, parent)} (${when}):</p><p><br></p>`,
     );
     setError(null);
   }
 
+  function isAddendumDraft(): boolean {
+    if (addendumParentId) return true;
+    if (!editingDraftId) return false;
+    const draft = evolutions.find((e) => e.id === editingDraftId);
+    return Boolean(draft?.addendum_of_id);
+  }
+
+  function requireAddendumReason(): boolean {
+    const reason = addendumReason.trim();
+    if (!reason) {
+      setError("Informe o motivo do adendo.");
+      return false;
+    }
+    return true;
+  }
+
   async function saveDraft() {
+    if (isAddendumDraft() && !requireAddendumReason()) return;
     setSaving(true);
     setError(null);
     const url = editingDraftId
@@ -344,7 +372,13 @@ export default function EvolutionTab({
         content_html: editorHtml,
         sign: false,
         ...(addendumParentId && !editingDraftId
-          ? { addendum_of_id: addendumParentId }
+          ? {
+              addendum_of_id: addendumParentId,
+              addendum_reason: addendumReason.trim(),
+            }
+          : {}),
+        ...(editingDraftId && isAddendumDraft()
+          ? { addendum_reason: addendumReason.trim() }
           : {}),
       }),
     });
@@ -364,6 +398,7 @@ export default function EvolutionTab({
       ? evolutions.find((e) => e.id === editingDraftId)
       : null;
     const isAddendum = Boolean(addendumParentId || draftEv?.addendum_of_id);
+    if (isAddendum && !requireAddendumReason()) return;
     if (
       !isAddendum &&
       modeUsesRegulationCheck(suggestedMode) &&
@@ -384,7 +419,16 @@ export default function EvolutionTab({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content_html: editorHtml, sign: false }),
+          body: JSON.stringify({
+            content_html: editorHtml,
+            sign: false,
+            ...(addendumParentId
+              ? {
+                  addendum_of_id: addendumParentId,
+                  addendum_reason: addendumReason.trim(),
+                }
+              : {}),
+          }),
         },
       );
       const createData = await createRes.json();
@@ -401,7 +445,10 @@ export default function EvolutionTab({
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content_html: editorHtml }),
+          body: JSON.stringify({
+            content_html: editorHtml,
+            ...(isAddendum ? { addendum_reason: addendumReason.trim() } : {}),
+          }),
         },
       );
       const patchData = await patchRes.json();
@@ -434,11 +481,15 @@ export default function EvolutionTab({
     }
     setEditorHtml("");
     setEditingDraftId(null);
+    setAddendumParentId(null);
+    setAddendumReason("");
     setManualMode(null);
   }
 
   function continueEditingDraft(ev: EpisodeEvolution) {
     setEditingDraftId(ev.id);
+    setAddendumParentId(null);
+    setAddendumReason(ev.addendum_reason ?? "");
     setEditorHtml(ev.content_html);
     setError(null);
   }
@@ -548,7 +599,37 @@ export default function EvolutionTab({
             </p>
             <p className="mt-1 text-xs text-navy-800/60">
               Informe explicitamente — o sistema não infere melhora ou piora.
+              Salve cada problema antes de gerar CORE.
             </p>
+            {conduct && (
+              <label className="mt-2 flex items-start gap-2 text-xs text-navy-900">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={conduct.no_treatment_response_waiver}
+                  onChange={async (e) => {
+                    const res = await fetch(
+                      `/api/pacientes/episodios/${episodeId}/conduta`,
+                      {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          no_treatment_response_waiver: e.target.checked,
+                        }),
+                      },
+                    );
+                    const data = await res.json();
+                    if (res.ok && data.conduct) {
+                      onConductChange?.(data.conduct);
+                    }
+                  }}
+                />
+                <span>
+                  Marcar que não há necessidade de registro adicional de
+                  resposta ao tratamento (5.3)
+                </span>
+              </label>
+            )}
             <ul className="mt-3 space-y-3">
               {activeProblems.map((pr) => (
                 <li
@@ -634,6 +715,21 @@ export default function EvolutionTab({
           </button>
         </div>
 
+        {isAddendumDraft() && (
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-navy-950">
+              Motivo do adendo
+            </label>
+            <input
+              type="text"
+              value={addendumReason}
+              onChange={(e) => setAddendumReason(e.target.value)}
+              placeholder="Ex.: correção de dose, complemento de conduta..."
+              className="mt-1 w-full rounded-md border border-navy-900/15 px-3 py-2 text-sm text-navy-950"
+            />
+          </div>
+        )}
+
         <div className="mt-4">
           <SimpleRichTextEditor value={editorHtml} onChange={setEditorHtml} />
         </div>
@@ -653,6 +749,15 @@ export default function EvolutionTab({
                   className="mt-2 text-sm text-navy-900"
                   dangerouslySetInnerHTML={{ __html: card.suggestionHtml }}
                 />
+                {card.protocolHref && (
+                  <Link
+                    href={card.protocolHref}
+                    target="_blank"
+                    className="mt-2 inline-block text-xs font-medium text-navy-900 underline"
+                  >
+                    {card.protocolLinkLabel ?? "Abrir protocolo relacionado"}
+                  </Link>
+                )}
                 {card.medications.length > 0 && (
                   <ul className="mt-2 space-y-1 text-xs">
                     {card.medications.map((med) => (
@@ -749,6 +854,13 @@ export default function EvolutionTab({
                   {ev.addendum_of_id && (
                     <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-medium text-sky-900">
                       Adendo
+                      {ev.addendum_of_id
+                        ? ` à #${evolutionDisplayNumber(
+                            evolutions,
+                            evolutions.find((e) => e.id === ev.addendum_of_id) ??
+                              ev,
+                          )}`
+                        : ""}
                     </span>
                   )}
                   {isEvolutionSigned(ev) ? (
@@ -791,6 +903,12 @@ export default function EvolutionTab({
                     </>
                   )}
                 </div>
+                {ev.addendum_reason && (
+                  <p className="mt-2 text-sm text-navy-900">
+                    <span className="font-medium">Motivo:</span>{" "}
+                    {ev.addendum_reason}
+                  </p>
+                )}
                 <div
                   className="prose prose-sm mt-3 max-w-none text-navy-950"
                   dangerouslySetInnerHTML={{ __html: ev.content_html }}

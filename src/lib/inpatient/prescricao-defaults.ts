@@ -11,5 +11,6 @@ export function DEFAULT_GENERAL_ORDERS(episodeId: string) {
     diet: "dieta_oral_geral",
     vitals_frequency: "6_6h",
     padua_score: {},
+    caprini_score: {},
   };
 }

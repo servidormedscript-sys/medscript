@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -37,6 +38,11 @@ export function ProtocolInternationProvider({
   const mergeVitals = useCallback((partial: ProtocolVitalsPayload) => {
     setVitals((prev) => ({ ...prev, ...partial }));
   }, []);
+
+  useEffect(() => {
+    const w = weightKg.trim();
+    if (w) mergeVitals({ weight: w });
+  }, [weightKg, mergeVitals]);
 
   const logEvent = useCallback((text: string) => {
     const trimmed = text.trim();

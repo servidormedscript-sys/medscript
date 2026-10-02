@@ -50,6 +50,15 @@ export async function POST(request: Request, context: RouteContext) {
       { status: 400 },
     );
   }
+  if (
+    existing.addendum_of_id &&
+    !String(existing.addendum_reason ?? "").trim()
+  ) {
+    return NextResponse.json(
+      { error: "Informe o motivo do adendo antes de assinar." },
+      { status: 400 },
+    );
+  }
 
   const { data: row, error } = await supabase
     .from("episode_evolutions")
