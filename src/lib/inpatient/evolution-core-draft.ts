@@ -1,3 +1,8 @@
+import {
+  buildCoreClinicalSnapshot,
+  compareCoreClinicalSnapshots,
+  type CoreClinicalSnapshot,
+} from "@/lib/inpatient/core-clinical-snapshot";
 import { buildDischargeDraft } from "@/lib/inpatient/discharge-draft";
 import {
   buildEvolutionDraftHtml,
@@ -59,6 +64,7 @@ function plainSectionsToHtml(title: string, body: string): string {
 function formatTreatmentResponses(
   problems: EpisodeProblem[],
   responses: EpisodeTreatmentResponse[],
+  prescriptions: EpisodePrescription[],
 ): string {
   const active = problems.filter((pr) => pr.active);
   if (active.length === 0) return "Nenhum problema ativo listado.";
@@ -73,7 +79,14 @@ function formatTreatmentResponses(
       const r = byProblem.get(pr.id);
       if (!r) return `• ${pr.text}: [registrar resposta ao tratamento]`;
       const note = r.notes.trim() ? ` — ${r.notes.trim()}` : "";
-      return `• ${pr.text}: ${statusLabel[r.response_status] ?? r.response_status}${note}`;
+      const linked = r.linked_prescription_ids ?? [];
+      const medLines = linked
+        .map((id) => prescriptions.find((rx) => rx.id === id))
+        .filter(Boolean)
+        .map((rx) => `${rx!.name} ${rx!.dose} ${rx!.route}`);
+      const meds =
+        medLines.length > 0 ? ` Medidas: ${medLines.join("; ")}.` : "";
+      return `• ${pr.text}: ${statusLabel[r.response_status] ?? r.response_status}${note}${meds}`;
     })
     .join("\n");
 }
@@ -86,6 +99,7 @@ function buildRegulationBaseSections(input: {
   timeline: TimelineEvent[];
   problems: EpisodeProblem[];
   treatmentResponses: EpisodeTreatmentResponse[];
+  prescriptions: EpisodePrescription[];
   since?: string | null;
 }): string[] {
   const { patient, episode, conduct, ctx } = input;
@@ -125,7 +139,11 @@ function buildRegulationBaseSections(input: {
 
   parts.push(
     p(
-      `Resposta ao tratamento por problema:\n${formatTreatmentResponses(input.problems, input.treatmentResponses)}`,
+      `Resposta ao tratamento por problema:\n${formatTreatmentResponses(
+        input.problems,
+        input.treatmentResponses,
+        input.prescriptions,
+      )}`,
     ),
   );
 
@@ -177,6 +195,9 @@ export function buildEvolutionDraftForMode(
     prescriptions: EpisodePrescription[];
     reconciliation: EpisodeMedReconciliation[];
     lastCoreGeneratedAt?: string | null;
+    firstCoreRequestAt?: string | null;
+    previousCoreSnapshot?: CoreClinicalSnapshot | null;
+    currentCoreSnapshot?: CoreClinicalSnapshot | null;
   },
 ): string {
   if (mode === "diaria") {
@@ -210,6 +231,13 @@ export function buildEvolutionDraftForMode(
   const dateLine = new Date().toLocaleDateString("pt-BR");
   const since =
     mode === "core_atualizacao" ? input.lastCoreGeneratedAt ?? null : null;
+  const previousSnap = input.previousCoreSnapshot ?? null;
+  const currentSnap =
+    input.currentCoreSnapshot ??
+    buildCoreClinicalSnapshot({
+      vitalRecords: input.ctx.vitalRecords,
+      labValues: input.ctx.labValues ?? [],
+    });
 
   if (mode === "judicializada") {
     const parts = [
@@ -230,6 +258,7 @@ export function buildEvolutionDraftForMode(
         timeline: input.timeline,
         problems: input.problems,
         treatmentResponses: input.treatmentResponses,
+        prescriptions: input.prescriptions,
       }),
       p(
         "Justificativa clínica para vaga judicializada: [descrever necessidade de recurso não disponível na unidade e risco de permanência]",
@@ -253,6 +282,7 @@ export function buildEvolutionDraftForMode(
       timeline: input.timeline,
       problems: input.problems,
       treatmentResponses: input.treatmentResponses,
+      prescriptions: input.prescriptions,
       since,
     }),
   ];
@@ -263,12 +293,37 @@ export function buildEvolutionDraftForMode(
         "Síntese para regulação: [resumir gravidade, estabilidade hemodinâmica, suporte necessário e motivo da transferência]",
       ),
     );
-  } else {
-    parts.push(
-      p(
-        "Atualização desde a última solicitação CORE: [intercorrências, resposta ao tratamento, novos exames, mudança de suporte]",
-      ),
-    );
+  } else if (mode === "core_atualizacao") {
+    const firstAt = input.firstCoreRequestAt;
+    if (firstAt) {
+      const waitMs = Date.now() - new Date(firstAt).getTime();
+      const waitH = Math.max(0, Math.floor(waitMs / (1000 * 60 * 60)));
+      parts.push(p("TEMPO AGUARDANDO TRANSFERÊNCIA", true));
+      parts.push(
+        p(
+          `Solicitado: ${new Date(firstAt).toLocaleString("pt-BR")} · Tempo aguardando: ~${waitH}h`,
+        ),
+      );
+      if (input.lastCoreGeneratedAt) {
+        parts.push(
+          p(
+            `Última atualização CORE: ${new Date(input.lastCoreGeneratedAt).toLocaleString("pt-BR")}`,
+          ),
+        );
+      }
+    }
+    parts.push(p("MUDANÇAS DESDE A ÚLTIMA REFERÊNCIA CORE:", true));
+    if (previousSnap) {
+      for (const line of compareCoreClinicalSnapshots(previousSnap, currentSnap)) {
+        parts.push(p(line));
+      }
+    } else {
+      parts.push(
+        p(
+          "Sem snapshot anterior — compare manualmente com a solicitação inicial.",
+        ),
+      );
+    }
   }
 
   return parts.join("\n");

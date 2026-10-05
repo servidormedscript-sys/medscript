@@ -33,6 +33,7 @@ export function buildPatientNextSteps(input: {
   codeStatus?: CodeStatus | null;
   internationHours?: number;
   paduaFilled?: boolean;
+  codeReviewDue?: boolean;
 }): PatientNextStep[] {
   const steps: PatientNextStep[] = [];
   const ultimo = pickUltimoVital(input.vitalRecords);
@@ -113,6 +114,15 @@ export function buildPatientNextSteps(input: {
       priority: "positive",
       text: "Todos os critérios de alta atingidos — considerar iniciar processo de alta.",
       tab: "alta",
+    });
+  }
+
+  if (input.codeReviewDue) {
+    steps.push({
+      id: "code-review",
+      priority: "attention",
+      text: "Revisar ou confirmar status de código do paciente (risco elevado).",
+      tab: "conduta",
     });
   }
 

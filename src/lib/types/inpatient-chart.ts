@@ -160,6 +160,7 @@ export type EpisodeTreatmentResponse = {
   problem_id: string;
   response_status: TreatmentResponseStatus;
   notes: string;
+  linked_prescription_ids: string[];
   created_by: string | null;
   created_at: string;
 };

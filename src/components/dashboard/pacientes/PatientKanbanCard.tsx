@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { inpatientChartUrl } from "@/lib/dashboard/inpatient-chart-url";
+import type { InpatientChartTabId } from "@/lib/inpatient/chart-tabs";
 import CodeStatusBadge from "@/components/inpatient/CodeStatusBadge";
 import type { KanbanEpisode, RiskLevel } from "@/lib/types/patient";
 import { RISK_LABELS } from "@/lib/types/patient";
@@ -9,6 +10,7 @@ import PatientCareSummaryBadge from "./PatientCareSummaryBadge";
 type PatientKanbanCardProps = {
   episode: KanbanEpisode;
   onMove: () => void;
+  onPromote?: () => void;
   onView: () => void;
   onDragStart?: (episode: KanbanEpisode) => void;
   onDragEnd?: () => void;
@@ -33,6 +35,7 @@ function IconEye(props: React.SVGProps<SVGSVGElement>) {
 export default function PatientKanbanCard({
   episode,
   onMove,
+  onPromote,
   onView,
   onDragStart,
   onDragEnd,
@@ -102,13 +105,64 @@ export default function PatientKanbanCard({
 
       <StatusTimeDisplay episode={episode} compact />
 
-      {episode.clinical_status?.next_step_preview && (
-        <p className="mb-2 line-clamp-2 text-[11px] text-navy-800/75">
-          → {episode.clinical_status.next_step_preview}
+      {episode.clinical_status?.discharge_prediction &&
+        !episode.clinical_status.discharge_prediction.suppressed && (
+          <p className="mb-2 text-[11px] font-medium text-navy-900">
+            Previsão de alta:{" "}
+            {episode.clinical_status.discharge_prediction.min_days}–
+            {episode.clinical_status.discharge_prediction.max_days} dias
+          </p>
+        )}
+      {episode.clinical_status?.discharge_prediction?.suppressed && (
+        <p className="mb-2 text-[11px] text-navy-800/65">
+          {episode.clinical_status.discharge_prediction.suppressed_reason}
         </p>
       )}
 
+      {(episode.clinical_status?.next_steps?.length ?? 0) > 0 ? (
+        <ul className="mb-2 space-y-1 text-[11px] text-navy-800/80">
+          {episode.clinical_status!.next_steps!.map((step) => (
+            <li key={step.id} className="flex gap-1">
+              <span aria-hidden>
+                {step.priority === "urgent"
+                  ? "🔴"
+                  : step.priority === "positive"
+                    ? "🟢"
+                    : "🟡"}
+              </span>
+              <Link
+                href={inpatientChartUrl(
+                  episode.id,
+                  step.tab as InpatientChartTabId,
+                )}
+                className="line-clamp-2 underline-offset-2 hover:underline"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {step.text}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      ) : episode.clinical_status?.next_step_preview ? (
+        <p className="mb-2 line-clamp-2 text-[11px] text-navy-800/75">
+          → {episode.clinical_status.next_step_preview}
+        </p>
+      ) : null}
+
       <PatientCareSummaryBadge summary={episode.care_summary} compact />
+
+      {episode.status === "em_observacao" && onPromote && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPromote();
+          }}
+          className="mb-2 w-full rounded border border-navy-900/15 bg-white py-1.5 text-xs font-medium text-navy-900 hover:bg-navy-50"
+        >
+          Promover para internação
+        </button>
+      )}
 
       {showChart && (
         <Link

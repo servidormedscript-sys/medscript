@@ -1,0 +1,1055 @@
+
+---PAGE 1---
+MedScript — Módulo de Internação (Pacientes Internados)
+ 
+ — Especificação de build: a ficha de internação como prontuário dinâmico 
+Esta parte é a especificação, pronta para implementação, do que precisa existir. 
+2.0 Estrutura geral da ficha 
+A ficha do paciente internado deixa de ser um modal único e passa a ser uma tela própria (ou um modal em tela 
+cheia) com uma barra de 9 abas fixas, trocando o painel abaixo sem recarregar o cabeçalho do paciente: 
+Resumo | Sinais Vitais | Exame Físico | Evolução | Exames | Prescrição | Conduta | 
+AIH/Internação | Alta 
+O cabeçalho da ficha (fixo, visível em todas as abas) mostra: nome, leito, idade/sexo/peso, dias de internação, 
+diagnóstico, alergias em destaque, badge de status de código (se ≠ "Reanimação plena") e classificação de 
+risco recalculada em tempo real (ver 2.10) — não mais um texto estático. 
+2.1 Aba Sinais Vitais 
+Registro (addVital): cada entrada guarda PAS, PAD, FC, FR, SpO₂, Temperatura (Tax), Glasgow, Diurese (mL), 
+observação livre, autor e horário — mais um bloco de dispositivos no mesmo registro (para não pedir o 
+mesmo dado duas vezes): tipo de O₂ (ar_ambiente / cateter / maf / vni / vm — rótulos: Ar ambiente / 
+Cateter nasal / Máscara de alto fluxo / VNI / Ventilação mecânica-IOT), fluxo em L/min (cateter/MAF), acesso 
+venoso central, IOT, monitorização, local (enfermaria/emergência/UTI). "Ar ambiente" e "Enfermaria" pré-
+selecionados por serem o cenário mais comum. Salvar exige pelo menos um campo preenchido (vital ou 
+dispositivo). 
+Faixas de referência de adulto (disparam alerta se fora): 
+Sinal Faixa normal 
+PAS 90–140 mmHg 
+PAD 60–90 mmHg 
+FC 60–100 bpm 
+FR 12–20 irpm 
+SpO₂ 94–100% 
+Tax 36–37,5 °C 
+Cada campo fora da faixa gera uma mensagem própria (ex. "FC alto (112 bpm)"), checagem independente por 
+campo — sem combinação lógica entre campos. 
+Faixas de referência pediátricas (por faixa etária — usar idade em meses; pediátrico = idade em meses < 
+216, ou seja, corte em 18 anos): 
+Faixa (até X meses) Rótulo FR (irpm) FC acordado (bpm) FC dormindo (bpm) 
+≤ 2 Neonato 30–60 100–205 90–160 
+≤ 12 2 meses a 1 ano 30–53 100–180 90–160 
+---PAGE 2---
+Faixa (até X meses) Rótulo FR (irpm) FC acordado (bpm) FC dormindo (bpm) 
+≤ 24 1 a 2 anos 22–37 98–140 80–120 
+≤ 72 3 a 6 anos 20–28 80–120 65–100 
+≤ 120 6 a 10 anos 18–25 75–118 58–90 
+> 120 Acima de 10 anos 12–20 60–100 50–90 
+Correção importante em relação à documentação original: o texto-fonte do app registra que os alertas de 
+sinais vitais "ainda usam faixa de adulto mesmo em paciente pediátrico" e trata isso como uma lacuna 
+conhecida (MVP). Nesta reconstrução, os alertas devem usar a faixa pediátrica correta quando o paciente 
+for pediátrico — não replicar essa lacuna. É a correção já identificada no documento interno 
+CORRECAO_PEDIATRIA_SINAIS_VITAIS.md e deve ser aplicada desde a primeira versão. 
+Gráfico de tendência: um SVG de linha por sinal vital (sem biblioteca externa), com o valor mais recente 
+destacado, faixa de referência sombreada, e pontos fora da faixa marcados visualmente. 
+Dois "últimos registros" distintos (importante para não quebrar os resumos): ultimoVital = último 
+registro com algum sinal numérico preenchido; ultimoComDispositivo = último registro com algum 
+campo de dispositivo preenchido — um registro feito só para atualizar o O₂ não deve "esconder" o último 
+sinal vital real. 
+Alerta de evolução atrasada: calcular horas desde a última evolução (ou desde a admissão, se não houver 
+evolução ainda); ≥12h = alerta de risco médio, ≥24h = alerta de risco alto (ver 2.10). 
+2.2 Aba Exame Físico 
+7 sistemas, cada um com um texto padrão de normalidade (formato pedido pela Dra. Letícia, abreviações do dia 
+a dia hospitalar): 
+Sistema Texto padrão quando normal 
+Estado geral BEG, LOTE, CHAAA 
+Cardiovascular (ACV) RR2T, BNF, sem sopros 
+Respiratório (AR) MVUA, ARA 
+Abdome Normotenso, RH+, indolor à palpação superficial e 
+profunda, sem massas ou visceromegalias 
+palpáveis, sem sinais de abdome agudo 
+Extremidades Aquecidas e perfundidas, TEC < 3s, sem edema. 
+Pulsos pediosos e tibial posterior palpáveis, cheios 
+e simétricos. Pés sem úlceras, lesões, sinais de 
+micose, proeminências ósseas ou deformidades 
+Neurológico Consciente, orientado(a), fala preservada, sem 
+déficit motor focal evidente, marcha preservada 
+conforme tolerância, pares cranianos sem 
+alterações grosseiras ao exame 
+Pele / mucosas Sem lesões cutâneas ativas 
+Cada sistema tem um checkbox "alterado" + campo de observação; se marcado "alterado" e a observação 
+estiver preenchida, usa o texto customizado — senão, usa o texto padrão de normalidade. Ao montar um exame 
+novo, oferecer dois fluxos: "✅ Igual ao anterior" (copia o último exame inteiro, grava imediatamente um 
+---PAGE 3---
+novo registro marcado semAlteracoes:true, mantendo timestamp — sem exigir digitação) e "✏️ Houve 
+mudanças" (pré-preenche o formulário com o último exame para o médico só ajustar o que mudou), mais um 
+link secundário para começar do zero. 
+2.3 Aba Evolução — o coração da "evolução automática" pedida 
+Botão "✨ Gerar rascunho automático": monta o texto abaixo e injeta no editor (rich text — 
+negrito/itálico/sublinhado, sem biblioteca externa), pronto para o médico revisar e complementar. Ordem 
+exata do texto padrão: 
+1. EVOLUÇÃO MÉDICA — {data atual} 
+2. {nome}, {idade} anos, leito {leito}, internado(a) desde {data admissão} ({N}º 
+dia de internação). 
+3. Diagnóstico: {diagnóstico} 
+4. Comorbidades: ... (se houver) 
+5. Alergias: ... (se houver) 
+6. Medicações agudas em curso, com dia de tratamento (ex. "Em D3 de Ceftriaxona 1g EV por ITU.") 
+7. Sinais vitais: {resumo do último registro} 
+8. Dispositivos: {resumo} 
+9. Se houver ≥2 registros de vitais: alerta de vital crítico do último registro, se houver 
+10. Exame físico: {texto do último exame físico, sistema por sistema} 
+11. Evolução clínica: [descrever evolução do quadro nas últimas horas] — deixado 
+propositalmente em branco, é aqui que o médico digita a narrativa livre; o sistema nunca inventa esse 
+trecho 
+12. Exames: {resultados agrupados por dia} + alerta de exame fora da faixa/tendência, se houver 
+13. Exames de imagem: {laudos}, se houver 
+14. Prescrição em uso: {lista de medicações ativas} 
+15. Conduta atual: {texto salvo em Conduta} 
+16. Se houver sugestão de conduta pelo diagnóstico (mesma tabela da Prescrição, ver 2.5): bloco Plano 
+sugerido pelo diagnóstico — {diagnóstico} (revise e ajuste ao caso): com cada linha 
+marcada • . 
+Sugestão por palavra-chave no texto livre da evolução (regex, sem IA — roda com debounce de 500ms a 
+cada tecla digitada, e também automaticamente logo depois de gerar o rascunho): 
+Gatilho (regex, resumido) Sugestão Medicação(ões)  
+hipotensão / choque Noradrenalina 0,05–1,0 mcg/kg/min 
+ titulada pela PAM, link para calculadora 
+ de gotejo 
+Noradrenalina  
+dessaturação / hipoxemia O2 suplementar, meta SpO2 94–98%  
+(88–92% se risco de retenção de CO2) 
+—  
+agitação psicomotora Aviso: evitar benzodiazepínico IM +  
+olanzapina IM juntos 
+Haloperidol + Prometazina 
+ 5mg+50mg IM dose única 
+ 
+crise convulsiva ativa — Diazepam 10mg 
+ (0,2mg/kg, máx 10mg) EV lento,  
+repetir 1x em 5min se persistir 
+ 
+---PAGE 4---
+Gatilho (regex, resumido) Sugestão Medicação(ões)  
+fibrilação atrial de início Antes de cardioverter, se FA>48h ou tempo 
+indeterminado 
+Enoxaparina 1mg/kg SC 12/12h  
+Cada card de sugestão termina com o aviso: "Detectado pelo texto da evolução — sugestão por palavra-chave, 
+revise antes de usar." Um clique em cada medicamento sugerido já cria a prescrição real (mesmo padrão de 
+"Adicionar" usado na aba Prescrição). 
+Histórico: lista todas as evoluções em ordem reversa (mais recente primeiro), com data/hora, autor e o HTML 
+formatado. 
+Upload de documento externo (PDF/foto) com OCR local no navegador, sem enviar a terceiros (ver 2.4 para o 
+motor de extração, reaproveitado aqui). 
+2.4 Aba Exames 
+21 exames com faixa de referência exata: 
+Exame Faixa normal 
+Hemoglobina 12–16 g/dL 
+Leucócitos 4.000–11.000 /mm³ 
+Plaquetas 150.000–450.000 /mm³ 
+Sódio 135–145 mEq/L 
+Potássio 3,5–5,5 mEq/L 
+Creatinina 0,6–1,2 mg/dL 
+Ureia 15–45 mg/dL 
+PCR 0–5 mg/L 
+Lactato 0,5–2,2 mmol/L 
+Glicemia 70–99 mg/dL 
+Bilirrubina Total 0,3–1,2 mg/dL 
+Bilirrubina Direta 0–0,3 mg/dL 
+TGO/AST 5–40 U/L 
+TGP/ALT 7–56 U/L 
+RNI 0,8–1,2 
+Amilase 28–100 U/L 
+Lipase 13–60 U/L 
+Cálcio 8,5–10,5 mg/dL 
+Magnésio 1,6–2,6 mg/dL 
+Fósforo 2,5–4,5 mg/dL 
+Albumina 3,5–5,0 g/dL 
+TSH 0,4–4,0 mUI/L 
+Regras de tendência (compara penúltimo vs. último resultado do mesmo exame): 
+---PAGE 5---
+Exame Alerta se subindo Alerta se descendo 
+Creatinina "Creatinina em elevação —  
+reavaliar função renal e drogas nefrotóxicas." 
+— 
+Potássio "Potássio em elevação 
+ — reavaliar risco de hipercalemia." 
+"Potássio em queda —  
+reavaliar risco de hipocalemia (sobretudo se 
+em diurético)." 
+Sódio "Sódio em elevação  
+— reavaliar hidratação/aporte de sódio." 
+"Sódio em queda — investigar causas de 
+hiponatremia." 
+Hemoglobina — "Hemoglobina em queda  
+— investigar sangramento oculto/ 
+ativo." 
+PCR "PCR em elevação — reavaliar foco infeccioso e  
+resposta ao tratamento." 
+— 
+Lactato "Lactato em elevação — reavaliar perfusão/ 
+adequação da reanimação volêmica." 
+— 
+Leucócitos "Leucócitos em elevação — reavaliar foco infeccioso." — 
+Plaquetas — "Plaquetas em queda — 
+ investigar causa (sepse, 
+ medicamentos, CIVD)." 
+Um mesmo exame pode gerar 2 alertas simultâneos (fora da faixa absoluta e em tendência de piora, mesmo se o 
+valor ainda estiver "normal" — ex. Potássio subindo de 3,6→5,2 ainda está dentro de 3,5–5,5, mas já dispara 
+alerta de tendência). 
+6 condutas críticas (olham só o valor mais recente, risco de vida imediato, com medicação pronta para 
+adicionar à prescrição com um clique — sempre sugestão revisável, nunca aplicada sozinha): 
+1. Sódio ≥ 160 → Hipernatremia grave: Soro Glicosado 5%, corrigir devagar (máx. ~8–10 mEq/L/24h). 
+Adrogué & Madias, NEJM 2000 · StatPearls 2025. 
+2. Sódio ≤ 120 → Hiponatremia grave: avaliar volemia, considerar salina hipertônica se sintomática; meta 
+4–6 mEq/L nas 6h iniciais, limite 24h de 10 (ou 8 se alto risco). Spasovski 2014 · NDT 2024. 
+3. Potássio ≥ 6,5 → Hipercalemia grave: Gluconato de Cálcio 10% 30mL EV em 10min (repetir se ECG 
+não melhorar) + Insulina Regular 10UI + Glicose 25g EV dose única, HGT seriado. UK Kidney 
+Association 2023. 
+4. Potássio ≤ 2,5 → Hipocalemia grave: repor com cautela na velocidade, monitorização cardíaca se 
+reposição rápida. UK Kidney Association 2023. 
+5. Glicemia ≤ 60 → Hipoglicemia: Glicose 50%, 20–40mL EV dose única, repetir HGT em 15min. ADA 
+Standards of Care 2024/2026. 
+6. Lactato ≥ 4 → reavaliar perfusão/reanimação volêmica, considerar sepse/choque. Surviving Sepsis 
+Campaign 2026 · ILAS 2023. 
+Cada card de conduta crítica termina com: "Sugestão de conduta por regra simples — sempre revise antes de 
+usar, não substitui julgamento clínico." 
+Extração automática por OCR (PDF ou foto de laudo, tudo processado no navegador, nada enviado a 
+terceiros): pdf.js extrai texto de PDF nativo com reconstrução de linha por posição X/Y (a ordem crua do 
+pdf.js embaralha colunas de tabela); se o PDF for digitalizado (pouco texto útil) ou for foto, usar Tesseract.js 
+---PAGE 6---
+com pré-processamento de imagem (escala de cinza + contraste). Localizar cada um dos 21 exames por 
+sinônimo/abreviação (regex — ex. "Na+", "TGO"/"AST", "INR"/"RNI"), varrer os números seguintes na linha e 
+escolher o primeiro dentro de uma faixa "plausível" (mais larga que a de referência clínica, só para descartar 
+lixo de extração, nunca para julgar normal/anormal). Tratar separadamente Leucócitos/Plaquetas pelo padrão 
+brasileiro de milhar ("296.000" ≠ 296). Detectar exames de imagem por palavra-chave e recortar a partir de 
+"Impressão"/"Conclusão". Nunca salvar direto: sempre cair numa tela de revisão com cada achado em campo 
+editável + checkbox (ligado por padrão) para o médico confirmar/corrigir/descartar antes de salvar. 
+Exames pendentes: lista separada ("solicitado, aguardando resultado"), com tipo, data da solicitação, previsão 
+(texto livre) e marcação de urgente; card de urgentes com destaque vermelho. Uma visão agregada de exames 
+pendentes entre todos os pacientes internados (não só o paciente aberto). 
+2.5 Aba Prescrição —  
+ 
+Ordem de montagem da aba: card de alergias → ordens gerais → reconciliação medicamentosa → formulário 
+de nova medicação → sugestão de antibioticoterapia/tratamento por diagnóstico (adulto) → sugestão 
+pediátrica por diagnóstico (dose por peso) → calculadora de dose pediátrica avulsa → sugestão de profilaxia 
+de TEV → lista de medicações ativas → lista de medicações suspensas. 
+Campos de uma prescrição: nome, dose, via, frequência, indicação, duração em dias (ou uso contínuo), com 
+dia de tratamento calculado a partir da própria data de início da medicação (não da data de internação). 
+16 diagnósticos de adulto com sugestão automática (cada um casado por palavra-chave/regex contra o 
+campo Diagnóstico do paciente): 
+Diagnóstico 
+Sugestão 
+(dose/via/frequência/duração) Fonte 
+ITU / pielonefrite Ceftriaxona 1g EV 24/24h, 10 dias (se 
+grave: Pipe-Tazo 4g+500mg 8/8h, 
+Cefepima 1g 12/12h ou Meropenem 
+1g 8/8h) 
+IDSA 2011 · EAU 2024 
+PAC (pneumonia) Ceftriaxona 1g EV 24/24h (5d) + 
+Azitromicina 500mg VO/EV 24/24h 
+(5d) 
+ATS/IDSA 2019 · ATS 2026 
+Celulite/erisipela Cefazolina 1g EV 8/8h, 7 dias (grave: 
+associar gram-neg/anaeróbio + 
+considerar Vancomicina) 
+IDSA 2014 
+Sepse/choque séptico Por foco: pulmonar 
+(Ceftriaxona+Claritromicina), 
+abdominal 
+(Ceftriaxona+Metronidazol ou Pipe-
+Tazo), urinário (Ceftriaxona ou 
+Cipro), pele (Oxacilina±Clinda), 
+corrente sanguínea 
+(Meropenem+Vanco), sem foco 
+(Cefepima+Metronidazol) 
+Surviving Sepsis 2026 · ILAS 2023 
+Cetoacidose/estado hiperosmolar Insulina Regular 0,1 UI/kg/h EV 
+contínua, sem bolus 
+ADA 2024 
+---PAGE 7---
+Diagnóstico 
+Sugestão 
+(dose/via/frequência/duração) Fonte 
+HDA Pantoprazol 80mg bolus + 8mg/h por 
+72h · Terlipressina se varicosa · 
+Ceftriaxona profilática se 
+varicosa/cirrose 
+ACG 2021 · ESGE 2021/2024 · 
+Baveno VII 2022 
+Abstinência alcoólica Tiamina 100–300mg 8/8h + 
+Diazepam por CIWA-Ar 
+ASAM 2020 · EMCrit IBCC 
+TEP Enoxaparina 1mg/kg 12/12h (ajustar 
+por ClCr) ou Rivaroxabana 15mg 
+12/12h×21d depois 20mg/dia 
+CHEST 2021 · AHA 2026 
+ICC descompensada / EAP Furosemida 40–80mg EV bolus, 
+titular 
+ESC 2021/2023 · AHA/ACC/HFSA 
+2022 
+DPOC Prednisona 40mg/dia (5d) + Amoxi-
+Clav se ≥2 critérios cardinais 
+GOLD 2026 
+Pancreatite Enoxaparina 40mg profilática + 
+Tramadol — hidratação é o pilar, sem 
+ATB de rotina 
+IAP/APA 2013/2020 
+Colecistite/colangite Ceftriaxona 1g 24/24h + 
+Metronidazol 8/8h, 8 dias 
+Tokyo Guidelines 2018 
+Encefalopatia hepática Lactulose 20–40mL 8/8-12/12h; sem 
+melhora em 48h: Rifaximina 
+AASLD/EASL 2014 
+Neutropenia febril Cefepima 2g EV 8/8h (+Vanco se 
+instável/cateter/pele/pneumonia) 
+IDSA 2011 
+AVC isquêmico agudo AAS 300→100mg + Atorvastatina 
+80mg + Enoxaparina 40mg profilática 
+(só sem indicação de trombólise) 
+AHA/ASA 2026 
+Asma/broncoespasmo Prednisona 40–50mg/dia (5d); EV só 
+se grave/IOT 
+GINA 2026 
+3 diagnósticos pediátricos com dose calculada por peso: 
+Diagnóstico Cálculo Fonte 
+PAC pediátrica Ceftriaxona 100mg/kg/dia ÷2 EV 
+12/12h, 7 dias 
+IDSA/PIDS 2011 
+Asma/broncoespasmo pediátrica Prednisolona peso/3 mL/dia (máx 
+20mL), 5 dias + Salbutamol spray 
+GINA 2026 
+Diarreia/desidratação pediátrica Ondansetrona 0,15mg/kg EV 8/8h 
+SN + Plano B/C de hidratação 
+calculados pelo peso 
+WHO/ESPGHAN 
+Calculadora de dose pediátrica avulsa (14 medicações — independente de diagnóstico): Amoxicilina, Amoxi-
+Clav, Azitromicina, Cefalexina, Ceftriaxona EV, Dipirona injetável, Paracetamol gotas, Ibuprofeno gotas, 
+Prednisolona susp., Ondansetrona, Bromoprida, Dimenidrinato, Hidrocortisona (asma), Hidrocortisona 
+(alergia), Adrenalina 1:1000 (anafilaxia) — cada uma com a fórmula de cálculo por peso já documentada e 
+pronta (disponível em detalhe se o programador precisar da tabela completa linha a linha). 
+---PAGE 8---
+Alergias — checagem em 3 pontos, sempre alerta, nunca bloqueio: checagem por substring de texto 
+(normalizado, sem acento/maiúscula, bidirecional — substância contém o nome do medicamento OU o nome 
+do medicamento contém a substância). Aplicada: (1) em tempo real, a cada tecla digitada no campo de nome da 
+medicação; (2) no momento de salvar a prescrição (toast de alerta, mas a prescrição é salva mesmo assim); (3) 
+permanentemente visível no card de Alergias, listando conflitos entre alergias registradas e medicações ativas.  
+Reconciliação medicamentosa: toda medicação de uso domiciliar (texto digitado na admissão, uma por linha) 
+nasce com decisão pendente. Três estados: pendente / mantida / suspensa, sempre com autor e data/hora de 
+quem decidiu. "Manter" empurra a medicação para a prescrição ativa (usoContinuo:true, sem contagem de 
+dia de tratamento). "Suspender" só marca como suspensa, não cria prescrição. Card mostra "✅ Reconciliação 
+concluída" quando não sobra nenhuma pendente. 
+Profilaxia de TEV — Escore de Padua (11 itens, clínico) ou Caprini (cirúrgico, 4 grupos de pontuação): 
+Padua — alto risco se ≥4 pontos: Câncer ativo (3), TEV prévio (3), Mobilidade reduzida ≥3 dias (3), Trombofilia 
+(3), Trauma/cirurgia ≤1 mês (2), Idade ≥70 (1), IC/insuf. respiratória (1), IAM/AVC agudo (1), Infecção 
+aguda/doença reumatológica (1), Obesidade IMC≥30 (1), Terapia hormonal (1). 
+Caprini — pontos de 1/2/3/5 conforme item (lista completa de itens disponível); faixas: 0 = risco muito baixo 
+(deambulação), 1–2 = baixo (± mecânica), 3–4 = moderado (farmacológica ou mecânica), ≥5 = alto 
+(farmacológica + mecânica). 
+Ajuste automático pela função renal: ClCr = ((140-idade) × peso) / (72 × creatinina), ×0,85 se 
+sexo feminino (Cockcroft-Gault). Se alto risco pelo escore: Enoxaparina 40mg SC 1x/dia, reduzida para 20mg 
+se ClCr<30 OU idade≥75 OU peso<50kg; alternativa Heparina não fracionada 5.000UI SC, 8/8h (ou 12/12h se 
+algum dos ajustes acima se aplicar). 
+Modelo de prescrição do hospital: réplica de uma ficha de papel real usada no plantão, tabela com 12 colunas 
+de horário (02h a 24h, de 2 em 2h) para a enfermagem marcar, pré-preenchida com ordens gerais + prescrição 
+ativa numerada, mais 4 linhas em branco para medicações de uso contínuo avulsas. Botão de imprimir/gerar 
+PDF. 
+Ordens gerais (checkboxes fixos, textos exatos): 
+• "O2 sob cateter/máscara se SatO2 < 92%" 
+• "Comunicar intercorrências/anormalidades à equipe médica" 
+• "Dipirona 1g EV 6/6h se dor ou febre (Tax ≥ 37,8°C)" 
+• "Ondansetrona 4mg EV 8/8h se náusea ou vômito" 
+• "Insulina Regular Humana (IRH) conforme protocolo de escala móvel da instituição, se HGT alterado" 
+• "Glicose Hipertônica 50% 2 ampolas EV se HGT < 70 mg/dL" 
+Mais select de dieta (Dieta oral geral / branda-pastosa / zero / enteral / parenteral) e de frequência de sinais 
+vitais (2/2h, 4/4h, 6/6h, 8/8h + HGT). 
+2.6 Aba Conduta 
+Três blocos na mesma aba: 
+Status de código — 3 opções fixas: Reanimação plena 🫀 / Não reanimar (ONR) 🔴 / Cuidados de conforto 
+exclusivos 🔴, com justificativa opcional, autor e data. Selo vermelho visível no cabeçalho da ficha, na lista de 
+pacientes e na passagem de plantão sempre que ≠ "Reanimação plena". 
+---PAGE 9---
+Passagem de plantão — pendências estilo I-PASS: lista de pendências (texto, concluído/pendente, autor, 
+data) + plano de contingência ("Se piorar..."). Geração de texto de passagem de plantão agregando todos os 
+pacientes ativos, agrupados por unidade, no formato: 
+=== INTERNADOS (N) === 
+• Nome (Leito X) [+ ⚠️ status de código, se ≠ pleno] 
+   [I] Gravidade: {nível de risco} — {motivos} 
+   [P] {diagnóstico} — Dia N de internação — Critérios de alta: X/4 — Última evolução: 
+{texto} 
+   [A] Pendências: {lista} ou "nenhuma pendência registrada" 
+   [S] Se piorar: {plano de contingência} 
+Com botões: Copiar, Baixar PDF, e enviar direto por WhatsApp (link wa.me com o texto completo pré-
+preenchido, para um colega cadastrado). 
+Conduta atual — texto livre com botão "💡 Sugerir conduta", que monta automaticamente: medicações ativas 
+a manter, exames alterados a controlar, recomendação conforme classificação de risco e critérios de alta (ver 
+2.10), alerta se evolução atrasada ≥24h, e a linha fixa "Orientar paciente/acompanhante sobre o quadro atual e 
+o plano terapêutico." 
+Mais o escore de TEV (Padua/Caprini) com checkboxes e resultado em tempo real, linkado à sugestão de 
+profilaxia da aba Prescrição. 
+2.8 Aba Alta 
+Botão "✨ Gerar rascunho automático", montando dois campos: 
+Resumo (# HD / # CONTEXTO / # EVOLUÇÃO / # EXAME FÍSICO NA ALTA / # EXAMES 
+COMPLEMENTARES / # IMPRESSÃO DIAGNÓSTICA) — puxando diagnóstico, contexto estruturado (admissão, 
+alergias, medicações agudas, dispositivos — nunca um resumo narrativo por IA, só fatos já registrados), última 
+evolução, último exame físico/vitais, exames por dia, laudos de imagem. 
+Orientações — conduta na alta, medicações para manter em casa, alerta explícito se a reconciliação 
+medicamentosa ainda tiver pendências ("⚠️ Reconciliação medicamentosa incompleta — N medicação(ões) de 
+casa sem decisão"), situação de transferência, e campo fixo para orientações gerais/sinais de alarme. 
+16 sugestões de alta por diagnóstico/comorbidade (ICC, IAM/SCA, AVC, DPOC, PAC, Diabetes 
+descompensado, ITU/Pielonefrite, TEP, Sepse, DRC/LRA, HDA, Abstinência alcoólica, Pancreatite, 
+Colecistite/Colangite, Encefalopatia hepática, Neutropenia febril, Crise asmática) — cada uma com 
+encaminhamento (especialidade + prazo), exames de controle sugeridos, orientações + sinais de alarme, e fonte 
+citada. Um clique concatena (nunca substitui) a sugestão nos campos. 
+Após confirmar a alta: paciente não é removido, só sai das listas de "internados" — permanece consultável e 
+pode ser reaberto em até 7 dias após a alta (voltar para internado). 
+2.9 Aba Resumo (visão consolidada) + Lista de Problemas + Comorbidades 
+A aba Resumo funciona como dashboard do paciente: contadores (evoluções/prescrições 
+ativas/exames/laudos), últimos vitais, último exame físico, última evolução, conduta atual, lista de problemas, 
+classificação de risco (ver 2.10), comorbidades, critérios de alta (X/4), alerta de evolução atrasada, alertas de 
+vitais, condutas críticas por exame, alertas de tendência de exame. 
+---PAGE 10---
+Lista de problemas: nasce automaticamente com o diagnóstico de admissão como primeiro item (na primeira 
+vez que a aba Resumo é aberta), e evolui ao longo da internação (ex. paciente internado por pneumonia 
+acumula "DM descompensada", "IRA"). Cada problema: texto, ativo/resolvido, data de início, data de resolução 
+— pode ser reaberto. 
+Comorbidades: checklist fixo de 13 itens (HAS, DM, Dislipidemia, Obesidade, IC, IAM prévio/DAC, AVC prévio, 
+DPOC, Asma, DRC, Neoplasia ativa/tratada, Tabagismo, Etilismo) + campo livre "Outras". 
+2.10 Classificação de risco e critérios de alta — precisa deixar de ser estática 
+Isto substitui o <select> manual de hoje. 3 níveis, recalculados em tempo real a cada sinal vital, exame ou 
+evolução novos: 
+ALTO   = qualquer vital crítico (SpO2<90, PAS<90, PAS>220, FC<40 ou >150, Glasgow≤8, 
+Tax≥39,5 ou ≤35) 
+         OU exame crítico (Lactato>4, Plaquetas<50.000) 
+         OU evolução atrasada ≥24h 
+         → se algum desses disparar, risco = ALTO 
+ 
+MÉDIO  = (se não for ALTO) qualquer alerta de faixa de referência normal (vitais ou 
+exames) 
+         OU evolução atrasada ≥12h 
+         → risco = MÉDIO 
+ 
+BAIXO  = nenhum dos casos acima 
+Critérios de alta (4 itens, cada um com ✅/⬜): (1) sinais vitais dentro da faixa normal no último registro; (2) 
+afebril (Tax<37,8°C); (3) nenhum alerta de exame ativo; (4) evolução registrada nas últimas 24h. Mostrar 
+sempre "Critérios de alta: X/4" na lista de pacientes e no resumo, com o aviso fixo: "Sugestão por regras simples 
+— não substitui julgamento clínico." 
+2.11 Fechar a ponte Protocolo → Internação para todos os protocolos 
+Hoje a ponte só existe a partir de "Meu Paciente Grave". É preciso replicar o mesmo botão "🏥 Internar 
+paciente" em todos os 33 protocolos clínicos, não só nesse módulo. Especificação da função compartilhada: 
+Ao clicar, montar um objeto de transferência com: diagnóstico sugerido pelo protocolo (ou vazio), sinais vitais 
+já coletados no protocolo (ou nulo), nota de texto livre (condutas/eventos já realizados durante o atendimento, 
+com hora), e o identificador do registro de origem (para poder limpá-lo depois de consumido). Abrir o 
+formulário de admissão já com esses dados preenchidos (nome/idade/sexo ficam em branco para completar) e, 
+ao confirmar a admissão: 
+1. Criar o paciente normalmente (ver campos do cadastro). 
+2. Se havia sinais vitais do protocolo: criar o primeiro registro estruturado da aba Sinais Vitais, com a 
+observação "Trazido da triagem no momento da internação." 
+3. Sempre que houver vitais, condutas ou nota do protocolo de origem: criar a primeira evolução 
+automática, com texto narrativo montado assim: abertura ("Paciente {sexo}, {idade} anos, {peso}kg, 
+deu entrada às {hora} com quadro de {diagnóstico}.") + sinais vitais à admissão (só os preenchidos, na 
+ordem Glasgow/SatO2/PA/FC/FR/Tax) + condutas/medicações já realizadas no protocolo, ordenadas 
+por hora ("Condutas/medicações realizadas: ...") ou, na ausência de eventos, a nota livre do protocolo + 
+fechamento fixo ("Paciente internado(a) no leito {leito} para observação e conduta conforme 
+protocolo."). 
+---PAGE 11---
+4. Limpar o registro do protocolo de origem, já consumido pela internação. 
+5. Abrir direto a ficha recém-criada do paciente, na aba Resumo. 
+Isso é o que faz a internação nascer com contexto clínico real em vez de uma ficha em branco — hoje só o 
+campo Diagnóstico atravessa essa ponte; vitais e evolução precisam atravessar também, e a partir de todos os 
+protocolos, não só de Meu Paciente Grave. 
+Também considerar: um fluxo de "paciente em observação" mais leve que a internação formal — cadastro 
+simplificado (nome, idade, sexo, leito/box, motivo), sem abrir todo o prontuário, com um botão único para 
+"promover" para internação formal quando necessário (criando automaticamente uma evolução de transição 
+registrando o momento da promoção). 
+ 
+Parte 3 — As 4 funcionalidades novas pedidas 
+Estas quatro não estão na documentação original do app  
+ 
+3.1 Gestão de leitos — mapa visual 
+Onde mora: uma nova sub-aba dentro de "Relatório de Pacientes" (ao lado de Kanban), chamada "Mapa de 
+Leitos" — e também um bloco reduzido no Dashboard. 
+Modelo de dados novo, independente do cadastro de paciente: uma coleção de leitos físicos, cadastrada 
+uma vez em Organização Clínica (novo sub-menu "Leitos"): { id, código do leito (ex. "12A"), 
+unidade/setor (ex. "Enfermaria 2º andar", "UTI"), status (livre / ocupado / em 
+higienização / bloqueado/manutenção), pacienteId (se ocupado) }. Isso desacopla "leito" 
+(recurso físico do hospital) de "paciente.leito" (hoje um campo de texto livre na ficha) — sem essa separação 
+não dá para saber quantos leitos existem e quantos estão livres, só quantos pacientes têm algo digitado no 
+campo Leito. 
+Tela do mapa: grade de cartões, um por leito cadastrado, agrupados por unidade/setor (com contagem "8/12 
+ocupados" por setor). Cada cartão: 
+• Código do leito e unidade. 
+• Se ocupado: nome do paciente, diagnóstico, borda colorida pela classificação de risco (vermelho=alto, 
+amarelo=médio, verde=baixo — reaproveitando o cálculo de 2.10), clicável para abrir a ficha. 
+• Se livre: cartão neutro com botão rápido "Internar aqui" (abre o cadastro de novo paciente com o leito já 
+preenchido). 
+• Se em higienização/bloqueado: cartão cinza/hachurado, com botão para liberar. 
+Filtros: por unidade/setor, por status, por nível de risco. 
+Regras de sincronização: ao admitir um paciente com leito selecionado do mapa, o leito muda para "ocupado" 
+automaticamente; ao dar alta ou transferir, o leito volta para "em higienização" (não direto para "livre" — evita 
+internar por engano num leito ainda não limpo); um botão manual libera de "higienização" para "livre". 
+3.2 Gráfico de pacientes internados por especialidade 
+Onde mora: Dashboard (bloco novo, ao lado dos cards existentes) e dentro do Mapa de Leitos como filtro 
+visual. 
+---PAGE 12---
+Pré-requisito de dado: hoje a ficha não tem um campo de "especialidade" — só "Diagnóstico" (texto livre). 
+Duas opções, recomendo a combinação das duas: 
+1. Adicionar um campo Especialidade (select, ex. Clínica Médica, Cirurgia Geral, Cardiologia, Neurologia, 
+Pediatria, Ortopedia, UTI, Obstetrícia, Psiquiatria, Outra) no cadastro/edição da ficha — simples, 
+confiável, exige 1 clique a mais do médico na admissão. 
+2. Como fallback para pacientes sem especialidade marcada, inferir a partir do Diagnóstico por palavra-
+chave (reaproveitando a mesma lógica de casamento por regex já usada nas 16 regras de sugestão de 
+prescrição — ex. "ICC"/"IAM" → Cardiologia; "AVC" → Neurologia; "asma"/"DPOC" → Pneumologia) e 
+mostrar como "Especialidade (inferida)" com opção de correção manual. 
+Gráfico: barras horizontais (mais legível com muitas categorias), uma barra por especialidade, contando 
+pacientes com status=internado, ordenado do maior para o menor, com a cor de cada barra vinda da mesma 
+paleta de risco (opcional: empilhar por nível de risco dentro de cada barra, mostrando de forma visual não só 
+"quantos" mas "quão graves" em cada especialidade). Clicar numa barra filtra o Kanban/Mapa de Leitos para 
+aquela especialidade. 
+Reaproveitamento: a função de agrupamento já existe parcialmente na documentação para "diagnóstico" e 
+"unidade" (agruparPorDiagnostico, agruparPorUnidade) — o gráfico por especialidade é o mesmo padrão 
+de agregação, só trocando o campo agrupador. 
+3.3 Modelo preditivo de alta 
+Importante alinhar expectativa: com os dados que o app capta hoje (sem integração de laboratório em tempo 
+real, sem histórico populacional de milhares de internações), o que é possível construir com responsabilidade é 
+um modelo baseado em regras clínicas ponderadas (o mesmo paradigma já usado em todo o resto do app — 
+determinístico, transparente, auditável) — não um modelo de machine learning treinado, que exigiria uma base 
+histórica de dados que o app ainda não tem. Recomendo começar pelo modelo de regras (não é a promessa e 
+não deve ser vendida como "IA prevendo o futuro"), e migrar para um score aprendido de verdade mais 
+adiante, se e quando houver volume suficiente de altas registradas para treinar algo com confiança. 
+Onde mora: um novo bloco na aba Resumo do paciente ("Previsão de alta") + uma coluna "Previsão" na 
+lista/Kanban de internados. 
+Modelo de dados — o que precisa ser somado, com pesos, a título de ponto de partida (ajustável pela Dra. 
+Letícia depois de ver funcionando): 
+Fator Peso Fonte do dado 
+Critérios de alta atingidos (X/4, ver 2.10) +1 dia previsto a menos por  
+critério atingido 
+já calculado 
+Classificação de risco atual Alto = +3 dias, Médio = +1 dia,  
+Baixo = +0 
+já calculado (2.10) 
+Nº de alertas de exame ativos +0,5 dia por alerta ativo já calculado (2.4) 
+Tendência dos exames 
+ (piorando vs. melhorando nas últimas 48h) 
+piorando = +1 dia, estável = +0,  
+melhorando = −1 dia 
+comparar os 2 últimos  
+resultados de cada exame,  
+mesma lógica de 2.4 
+Dispositivos invasivos ativos  
+(O2 alto fluxo/VNI/VM, AVC, IOT) 
++2 dias se algum estiver ativo já capturado em Sinais Vitais → 
+dispositivos (2.1) 
+Status de código ≠ pleno não entra no cálculo de dias  2.6 
+---PAGE 13---
+Fator Peso Fonte do dado 
+(é outro tipo de decisão clínica),  
+mas suprime a previsão numérica 
+ e mostra só "acompanhamento 
+individualizado" 
+Tempo de internação já decorrido dado informativo, não peso — 
+ serve de contexto para o médico 
+ comparar 
+admissão 
+Diagnóstico tempo médio de internação de  
+referência por diagnóstico 
+ (ponto de partida: uma tabela  
+curada manualmente) 
+novo, a cadastrar 
+Saída na tela: nunca uma data única e "confiante" — sempre um intervalo ("previsão: 2 a 4 dias") + a lista dos 
+fatores que estão puxando a previsão para cima ou para baixo (transparência total — o médico precisa poder 
+ver exatamente por que o sistema está dizendo o que está dizendo, e discordar). Aviso fixo obrigatório na tela: 
+"Estimativa por regras clínicas simples — não é uma previsão de IA nem substitui o julgamento médico. 
+Ajuste com base no quadro real do paciente." 
+Reaproveitamento futuro: se e quando houver uma base histórica de altas suficiente (algumas centenas), essa 
+mesma tabela de fatores vira o ponto de partida óbvio para um modelo estatístico/ML de verdade (regressão, 
+ou um score tipo os já validados na literatura, como o "LACE index" de risco de reinternação, adaptado) — mas 
+isso é uma fase 2, não o ponto de partida. 
+3.4 Próximos passos por paciente (motor de recomendação) 
+Onde mora: bloco de destaque no topo da aba Resumo ("O que fazer agora") e um resumo compacto no card do 
+Kanban/Mapa de Leitos. 
+Diferente das sugestões já existentes que aparecem dentro de cada aba (sugestão de conduta, sugestão de alta, 
+condutas críticas por exame), este é um agregador único que reúne, para aquele paciente específico, tudo que 
+está pendente ou é o próximo passo lógico, em ordem de prioridade — como uma lista de tarefas, não como 
+texto solto: 
+Lógica de montagem (regras, na ordem de prioridade em que devem aparecer): 
+1. Urgente / risco de vida — qualquer conduta crítica de exame ativa (2.4) ou vital crítico não resolvido 
+(2.10, nível ALTO) → item vermelho, topo da lista, com o link direto para a ação (ex. "Potássio 6,8 — 
+aplicar Gluconato de Cálcio + Insulina/Glicose"). 
+2. Evolução atrasada — se ≥12h desde a última evolução, item de alerta com link direto para a aba 
+Evolução. 
+3. Exame pendente sem resultado há muito tempo — reaproveitar 
+examesPendentes/horasPendente (2.4); se um exame urgente está pendente há mais que um limiar 
+(ex. 4h para urgente, 24h para rotina), listar como próximo passo ("Cobrar resultado de Hemograma, 
+pendente há 26h"). 
+4. Reconciliação medicamentosa incompleta — se houver medicação de casa ainda pendente (2.5), 
+listar como próximo passo. 
+---PAGE 14---
+5. Critério de alta pendente, mas faltando pouco — se 3 de 4 critérios de alta já atingidos (2.10), 
+sugerir qual é o critério que falta e o que fazer para resolvê-lo (ex. "Falta apenas registrar evolução nas 
+últimas 24h para reavaliar alta"). 
+6. Se todos os critérios de alta estão atingidos — item de destaque verde: "Paciente atinge todos os 
+critérios de alta — considerar iniciar processo de alta", com atalho direto para a aba Alta (rascunho 
+automático). 
+7. Status de código não definido ou não revisado há muito tempo em paciente de risco alto — lembrete 
+para revisar/confirmar. 
+8. TEV sem escore preenchido — se o paciente está internado há mais de 24h e não tem nenhum item do 
+escore de Padua/Caprini marcado, sugerir preencher (2.5). 
+Formato de exibição: lista de itens tipo checklist, cada um com ícone de prioridade (🔴 urgente / 🟡 atenção 
+/ 🟢 positivo), o texto do que fazer, e um botão/link que leva direto para a aba e ação correspondente — nunca 
+é preciso caçar em qual aba está o que precisa ser feito. Cada item desaparece da lista sozinho assim que a 
+condição que o gerou deixa de ser verdadeira (ex. assim que a evolução é registrada, o item "evolução atrasada" 
+some automaticamente) — não é uma lista de tarefas manual, é 100% derivada do estado real do prontuário, 
+com zero tela de configuração adicional para o médico. 
+ 
+Parte 4 — Priorização sugerida e notas finais 
+Dado que a senhora pediu que esta parte seja "PERFEITA" e que o time parece ter espalhado esforço demais em 
+módulos paralelos, a sugestão de ordem de implementação, pensando em qual sequência entrega valor clínico 
+real mais rápido e destrava as peças seguintes: 
+1. Estrutura das 9 abas + Sinais Vitais + Exame Físico (2.0–2.2) — sem isso, nenhuma outra aba tem 
+onde puxar dado. 
+2. Evolução com rascunho automático (2.3) — é o que a senhora citou primeiro, e depende só do item 1. 
+3. Prescrição estruturada + sugestão por diagnóstico + alergia + reconciliação (2.5) — o segundo 
+item citado, também alimenta a Evolução (conduta sugerida) e a Alta. 
+4. Exames com faixa de referência/alerta/tendência (2.4) — alimenta Evolução, Alta, Conduta, Resumo 
+e Classificação de risco dinâmica. 
+5. Classificação de risco dinâmica + critérios de alta (2.10) — passa a depender de 1+4 e destrava o 
+Mapa de Leitos (3.1) e o Modelo preditivo de alta (3.3). 
+6. Gestão de leitos (3.1) e Gráfico por especialidade (3.2) — dependem só de 5 e de um campo novo de 
+especialidade. 
+7. Conduta / Status de código / Passagem de plantão I-PASS (2.6). 
+8. Alta com resumo automático + sugestões por diagnóstico (2.8) — depende de 2, 3, 4, 7. 
+9. AIH (2.7) — isolada, pode entrar em paralelo a qualquer momento. 
+10. Ponte protocolo→internação completa para os 33 protocolos (2.11) — tecnicamente pode vir cedo 
+(reaproveita o que já funciona em Meu Paciente Grave), mas só entrega o valor completo depois que 1–3 
+existirem (senão o paciente ainda nasce sem evolução/vitais estruturados). 
+11. Próximos passos por paciente (3.4) — é o agregador final, depende de quase tudo (1–8) já existir para 
+ter o que agregar; naturalmente a última peça a entrar, mas é a que dá a sensação de "o sistema pensa 
+comigo" — vale a pena guardar orçamento de desenvolvimento para ela no fim. 
+12. Modelo preditivo de alta (3.3) — depende de 5 e 8; entra por último por ser a peça mais nova e a que 
+mais precisa de calibração clínica da senhora antes de confiar nos pesos. 
+---PAGE 15---
+Nota: em nenhum ponto deste documento nenhuma sugestão deve ser aplicada, prescrita ou assinada 
+automaticamente sem um clique explícito do médico — esse é o padrão de segurança que atravessa todo o 
+desenho original do app (evolução, prescrição, alergia, conduta, alta, AIH — tudo é "sugestão revisável", nunca 
+ação automática), e deve ser mantido em todas as peças novas também, incluindo as 4 funcionalidades 
+desenhadas na Parte 3 e a extensão da Evolução descrita na Parte 5. 
+Onde a Parte 5 entra na ordem de implementação: depois dos itens 2 (Evolução), 4 (Exames com 
+tendência), 3 (Prescrição, de onde vem a refratariedade) e 8 (Alta) já existirem — ela é uma camada que 
+reaproveita esses quatro pontos, não um módulo isolado. Não precisa esperar o item 11 (Próximos passos) nem 
+o item 12 (Modelo preditivo). 
+ 
+Parte 5 — Evolução orientada a contexto: alta, CORE, atualização de CORE e vaga judicializada 
+Tentantiva de que a evolução do paciente saia como se fosser de uma IA generativa. A peça central da proposta 
+era montar isso como se fosse um prompt de sistema para uma API de IA — 
+5.0 Princípio: por que isto continua sem IA generativa 
+O botão "✨ Gerar evolução" (2.3) já funciona por concatenação de campos que existem no banco de dados do 
+próprio paciente — nunca por um modelo de linguagem escrevendo texto novo. Generalizar esse motor para os 
+5 contextos abaixo não muda esse princípio, só ensina a função a escolher qual combinação de campos e qual 
+template montar, dependendo da situação do paciente. Três consequências práticas dessa escolha, que valem a 
+pena estar explícitas no relatório: 
+• "Nunca inventar" deixa de ser uma regra e passa a ser uma garantia estrutural. Uma função que só 
+sabe concatenar campos existentes não tem como inventar um achado — não porque foi instruída a não 
+inventar, mas porque não existe caminho de código que produza texto fora do que está no banco. 
+• Nenhum dado do paciente sai do MedScript. Diferente de mandar nome, diagnóstico e exames para 
+uma API de terceiro a cada evolução gerada, tudo roda no próprio sistema — relevante especialmente 
+aqui, onde o texto pode incluir dados sensíveis destinados a um órgão de regulação (CORE) ou a um 
+processo judicial. 
+• O mesmo dado sempre gera o mesmo texto. Importante para defender o prontuário depois — um 
+texto que muda a cada geração (como acontece com qualquer IA generativa, mesmo com temperatura 
+baixa) é mais difícil de sustentar do que um texto reprodutível. 
+5.1 Detecção de contexto 
+O botão da aba Evolução passa a identificar automaticamente, nesta ordem, qual dos 5 templates montar — 
+sempre com chips no topo do editor para o médico trocar manualmente se quiser (ver 5.12). Correção 
+importante em relação à primeira versão deste relatório, apontada pela Dra. Letícia: vaga judicializada 
+precisa ter precedência sobre CORE comum. Um paciente pode ter core.status preenchido (por já ter sido 
+encaminhado ao CORE antes) e, ao mesmo tempo, ter a vaga judicializada depois — se a ordem checar CORE 
+primeiro, o sistema nunca chega ao modo Judicializada, que é o contexto mais específico e de maior peso nesse 
+caso: 
+SE paciente.status == "alta recente" (fluxo já iniciado na aba Alta)   → modo ALTA 
+(2.8, sem mudança) 
+SENÃO SE paciente.vagaJudicializada == true                            → modo VAGA 
+JUDICIALIZADA (5.9) 
+SENÃO SE paciente.core.status existe E histórico de gerações CORE > 0  → modo 
+---PAGE 16---
+ATUALIZAÇÃO CORE (5.8) 
+SENÃO SE paciente.core.status existe E histórico de gerações CORE == 0 → modo CORE — 
+solicitação inicial (5.7) 
+SENÃO                                                                   → modo 
+EVOLUÇÃO DIÁRIA (2.3, sem mudança) 
+5.2 Campos novos no cadastro do paciente (complementam 2.5/2.6/2.9) 
+Campo Tipo Onde aparece 
+Especialidade/recurso necessário texto curto aba Conduta, bloco novo "Regulação" 
+Limitações da unidade checklist fixo (ver abaixo) + campo "Outro" aba Conduta, bloco "Regulação" 
+Status CORE select: nenhum / aguardando / autorizado / 
+negado 
+aba Conduta, bloco "Regulação" 
+Histórico de gerações CORE lista, timestamp + autor (append-only) interno — alimenta 5.8 
+Vaga judicializada booleano aba Conduta, bloco "Regulação" 
+Data de início da judicialização / nº 
+do processo (opcional) 
+data / texto curto aba Conduta, bloco "Regulação", só visível se 
+"Vaga judicializada" = sim 
+Classificação médica da necessidade 
+de transferência 
+select: sem classificação adicional / prioritária / 
+urgente / emergencial + justificativa (texto) + 
+confirmação (checkbox) 
+aba Conduta, bloco "Regulação" — ver 5.7 
+Limitações da unidade — substitui o campo de texto livre da primeira versão deste relatório por um checklist 
+fixo,, para que a frase final da Justificativa (5.7) seja sempre montada a partir de itens marcados, nunca de texto 
+digitado do zero: 
+☐ Especialidade não disponível 
+☐ Procedimento não disponível 
+☐ Cirurgia não disponível 
+☐ UTI não disponível 
+☐ Hemodinâmica não disponível 
+☐ Endoscopia não disponível 
+☐ Exame de imagem não disponível 
+☐ Hemoterapia não disponível 
+☐ Outro: __________ 
+Classificação médica da necessidade de transferência — campo único, compartilhado entre os modos CORE 
+(5.7) e Vaga judicializada (5.9) : o sistema mostra os dados objetivos e, quando há achados graves, avisa que 
+existem — mas quem decide se o caso é "prioritário", "urgente" ou "emergencial" é sempre o médico, nunca 
+uma regra automática: 
+CLASSIFICAÇÃO MÉDICA DA NECESSIDADE DE TRANSFERÊNCIA 
+ 
+( ) Sem classificação adicional 
+( ) Prioritária 
+( ) Urgente 
+( ) Emergencial 
+ 
+JUSTIFICATIVA MÉDICA: 
+____________________________________ 
+---PAGE 17---
+ 
+☐ Confirmo esta classificação com base no quadro clínico atual. 
+5.3 Checklist de completude antes de liberar CORE ou vaga judicializada — "⚠️ Pendências" 
+Reaproveitando o mesmo padrão de alerta não-bloqueante já usado em Reconciliação medicamentosa (2.5) e 
+Critérios de alta (2.10), uma função checarCompletudeRegulacao() roda antes de mostrar o rascunho de 
+CORE/vaga judicializada e verifica 6 pontos — se algum faltar, mostra um card "⚠️ Pendências" listando 
+exatamente o que falta, sem impedir a geração: 
+1. Diagnóstico principal preenchido. 
+2. Evolução registrada nas últimas 24h (reaproveita o alerta de evolução atrasada, 2.1/2.10). 
+3. Tratamento/medidas já instituídas registrados (2.5) ou o médico marcou explicitamente "sem 
+tratamento específico instituído até o momento" — correção em relação à primeira versão: não 
+exigir mais uma medicação ativa, porque há pacientes que precisam de transferência sem estarem em 
+uso de nenhuma medicação relevante (ex. aguardando procedimento, aguardando leito de especialidade 
+sem intercorrência medicamentosa). 
+4. Exame físico atual registrado (2.2). 
+5. Campo "Especialidade/recurso necessário" preenchido (5.2). 
+6. Ao menos um registro de Resposta ao tratamento (5.6) para os problemas ativos — ou explicitamente 
+marcado "sem necessidade de registro adicional". 
+7. Campo "Classificação médica da necessidade de transferência" preenchido (5.2) — mesmo que o valor 
+seja "sem classificação adicional", que é o padrão. 
+5.4 Modo Evolução diária e 5.5 Modo Alta 
+Sem mudança nenhuma em relação ao que já está especificado em 2.3 e 2.8 — este documento não os reescreve. 
+A única adição de interface é o chip "🏠 Preparar alta" (5.12), que leva direto para a aba Alta com o rascunho já 
+iniciado a partir dos dados da evolução atual. 
+5.6 Resposta ao tratamento — bloco estruturado por problema, não inferência automática 
+A primeira versão deste relatório tentava detectar refratariedade sozinha, só por existirem ≥2 medicações com 
+a mesma indicação.  Em vez de o sistema concluir refratariedade sozinho, ele monta um formulário curto e pré-
+preenchido, e é o médico quem registra a resposta ao tratamento — o sistema só formata a frase final a partir 
+do que foi confirmado. 
+Formulário "Resposta ao tratamento", acessível a partir de qualquer problema ativo da Lista de problemas 
+(2.9): 
+RESPOSTA AO TRATAMENTO 
+ 
+Problema: 
+[ {selecionado da Lista de problemas, 2.9} ] 
+ 
+Resposta: 
+( ) Melhorou 
+( ) Melhora parcial 
+( ) Sem resposta 
+( ) Piora 
+ 
+---PAGE 18---
+Medidas já realizadas: 
+[x] {medicação com indicação = este problema, pré-marcada automaticamente, 2.5} 
+[x] {medicação com indicação = este problema, pré-marcada automaticamente, 2.5} 
+[ ] Outra medida: __________ 
+ 
+Observação (opcional): 
+__________ 
+ 
+[CONFIRMAR] 
+O checklist "Medidas já realizadas" nasce pré-marcado automaticamente a partir das medicações 
+ativas/suspensas cuja indicação (2.5) corresponde ao problema selecionado — isso reaproveita a mesma 
+detecção que a primeira versão usava, só que agora como um preenchimento assistido, nunca como texto final. 
+O médico pode desmarcar, marcar "Outra medida" e escrever, e só depois de clicar [CONFIRMAR] o registro é 
+salvo (com autor e data/hora) e a frase é montada por regra fixa, nunca por síntese livre: 
+Resposta Frase gerada 
+Sem resposta "Mantém {problema} apesar das medidas 
+terapêuticas instituídas, incluindo 
+{medidas marcadas}, sem controle 
+satisfatório até o momento{. observação, 
+se houver}." 
+Piora "Apresenta piora de {problema} apesar de 
+{medidas marcadas}{. observação, se 
+houver}." 
+Melhora parcial "Apresenta melhora parcial de {problema} 
+com {medidas marcadas}{. observação, se 
+houver}." 
+Melhorou "Apresenta melhora de {problema} com 
+{medidas marcadas}{. observação, se 
+houver}." 
+O sistema também continua sugerindo, de forma não bloqueante, que o médico abra este formulário quando 
+detectar os mesmos dois sinais objetivos de antes — mas agora só como um convite, nunca gerando frase 
+sozinho: card "💬 Registrar resposta ao tratamento de {problema}?" quando ≥2 medicações ativas 
+compartilham indicação para um problema ativo, ou quando o fluxo (L/min) de oxigênio (2.1) sobe em ≥2 
+registros consecutivos (este último, por ser puramente um dado objetivo de dispositivo, continua podendo 
+aparecer como frase automática de fato — "Necessidade crescente de suporte de oxigênio, de 
+{valor mais antigo} para {valor mais recente} L/min." — já que não é um julgamento clínico, só a 
+leitura de um número já registrado). 
+Cada resposta confirmada fica guardada como um registro próprio (problema, resposta, medidas, observação, 
+autor, data/hora) e alimenta o bloco "RESPOSTA AO TRATAMENTO" dos modos CORE, Atualização CORE e Vaga 
+judicializada (5.7–5.9). 
+5.7 Modo CORE — solicitação inicial 
+EVOLUÇÃO MÉDICA / SOLICITAÇÃO DE TRANSFERÊNCIA VIA CORE — {data/hora} 
+ 
+{nome}, {idade} anos, leito {leito}. Internado(a) desde {data admissão} ({N}º dia). 
+---PAGE 19---
+Diagnóstico principal: {diagnóstico} 
+ 
+LINHA DO TEMPO (5.10): 
+{lista cronológica de eventos já registrados: admissão, início/suspensão de cada 
+medicação 
+ com indicação, mudanças de fluxo de O2, exames que dispararam alerta crítico (2.4)} 
+ 
+EVOLUÇÃO CLÍNICA REGISTRADA: 
+{concatenação cronológica, com data de cada uma, do texto livre "Evolução clínica" já 
+ escrito pelo próprio médico em cada evolução salva (2.3) — nunca um resumo 
+sintetizado 
+ por IA; são as frases do médico, na ordem em que foram escritas} 
+ 
+SINAIS VITAIS ATUAIS: {último registro, 2.1} 
+EXAME FÍSICO ATUAL: {último exame físico, 2.2} 
+ 
+TRATAMENTOS JÁ REALIZADOS: 
+{lista de medicações ativas e suspensas com data de início/fim, 2.5 — pode vir vazia, 
+ver 
+ checklist de completude 5.3, item 3} 
+ 
+RESPOSTA AO TRATAMENTO: 
+{um parágrafo por registro confirmado no formulário de Resposta ao tratamento, 5.6} 
+ 
+EXAMES LABORATORIAIS: {cronológico, uma linha por data, campos separados por " | ", 
+2.4} 
+TENDÊNCIA LABORATORIAL: {mesma lógica de tendência já especificada em 2.4} 
+EXAMES DE IMAGEM: {laudos registrados, 2.3/2.9} 
+ 
+IMPRESSÃO: {itens ativos da Lista de problemas, 2.9} 
+ 
+JUSTIFICATIVA PARA TRANSFERÊNCIA: 
+Paciente necessita avaliação/tratamento em serviço de maior complexidade devido a 
+{campo "Especialidade/recurso necessário", 5.2}. A unidade de origem não dispõe de 
+{itens marcados em "Limitações da unidade", 5.2, concatenados — ex. "avaliação 
+ortopédica especializada nem dos recursos necessários para investigação e tratamento 
+definitivo do quadro"}, impossibilitando a continuidade adequada da propedêutica e 
+manejo nesta instituição. 
+ 
+CLASSIFICAÇÃO MÉDICA DA NECESSIDADE DE TRANSFERÊNCIA: 
+{campo 5.2 — Sem classificação adicional / Prioritária / Urgente / Emergencial} 
+{se ≠ "Sem classificação adicional": Justificativa: campo 5.2} 
+ 
+{se houver achados graves nos vitais/exames dos últimos registros e o campo de 
+ classificação acima ainda não foi preenchido:} 
+⚠️ Há achados de gravidade nos registros deste paciente. Deseja preencher a 
+Classificação médica da necessidade de transferência? [abre o campo — nunca 
+classifica sozinho] 
+---PAGE 20---
+Nota sobre os exames laboratoriais: a linha {cronológico ... separados por " | "} é sempre gerada 
+a partir dos valores numéricos por exame já armazenados em 2.4 (Hb, Cr, Na, K...) — o banco nunca guarda só a 
+frase pronta. É esse armazenamento estruturado, não a frase, que permite os gráficos de tendência, os alertas 
+de faixa e a comparação da Atualização CORE (5.8); a frase é só uma das formas de exibir o mesmo dado. 
+Ao confirmar, o sistema grava um snapshot (mesmo padrão de saveBaseline() já usado em "Meu Paciente 
+Grave" — ver LOGICA_MEU_PACIENTE_GRAVE.md, seção 4) e muda paciente.core.status para 
+"aguardando". 
+5.8 Modo Atualização CORE 
+Em vez de repetir a solicitação inteira, reaproveita ponto por ponto a mesma lógica de comparação "antes → 
+agora" já implementada para a reavaliação em Meu Paciente Grave: compara o snapshot salvo na última 
+geração CORE com o estado atual (sinais vitais com seta de tendência, achados novos, achados resolvidos) e 
+monta: 
+ATUALIZAÇÃO CORE — {data/hora} 
+ 
+TEMPO AGUARDANDO TRANSFERÊNCIA 
+Solicitado: {data/hora da solicitação inicial — snapshot gravado em 5.7} 
+Tempo aguardando: {calculado: agora − data da solicitação inicial} 
+Última atualização: {data/hora da geração anterior, histórico 5.2} 
+Atualização atual: {data/hora agora} 
+ 
+Paciente permanece aguardando transferência (solicitação inicial em {data da 
+solicitação}). 
+ 
+MUDANÇAS DESDE A ÚLTIMA ATUALIZAÇÃO: 
+{diff automático: sinais vitais antes→agora com seta, achados novos, achados 
+resolvidos — 
+ mesmo motor de 'Meu Paciente Grave', aplicado aqui ao invés de comparar T0 x 
+reavaliação} 
+ 
+EXAMES DE CONTROLE: {exames lançados desde a última geração, mesmo formato de 2.4} 
+TENDÊNCIA: {2.4} 
+ 
+Mantido tratamento com {medicações ativas, 2.5}. {Parágrafos de Resposta ao tratamento 
+confirmados desde a última atualização, 5.6.} 
+ 
+Permanece necessária transferência para serviço com {recurso necessário, 5.2}. 
+{se a Classificação médica da necessidade de transferência, 5.2, já estiver 
+preenchida, 
+ repetir aqui — o médico pode revisá-la e atualizá-la a cada geração.} 
+ 
+{se o "veredito" do motor de comparação indicar piora — mesma lógica de 
+ 'não presumir melhora só pela pontuação' de LOGICA_MEU_PACIENTE_GRAVE.md, seção 4:} 
+Houve piora desde a solicitação inicial, caracterizada por {achados objetivos}, 
+reforçando a necessidade de avaliação em tempo oportuno. 
+Cada geração fica registrada no histórico (5.2), com autor e data/hora — importante tanto para auditoria 
+quanto para a própria Linha do tempo (5.10). O bloco "Tempo aguardando transferência" não exige nenhum 
+---PAGE 21---
+campo novo: é calculado no momento da geração, a partir da data da primeira geração CORE (5.7) e da última 
+entrada do histórico (5.2) — útil sobretudo quando a transferência se prolonga por dias. 
+5.9 Modo Vaga judicializada 
+Mesma lógica do CORE (5.7), com três diferenças deliberadas, coerentes com o cuidado que a própria Dra. 
+Letícia e a conversa com o ChatGPT já haviam identificado como importante: 
+1. Cabeçalho troca "Solicitação de transferência via CORE" por "Atualização de solicitação de transferência 
+— vaga judicializada", incluindo {data de início da judicialização} e {nº do processo}, se 
+preenchido (5.2). 
+2. A Linha do tempo (5.10) ganha peso maior no texto — em contexto judicial, a sequência factual e datada 
+dos eventos é o que sustenta o documento, mais do que a prosa. 
+3. Nunca gerar automaticamente expressões de urgência máxima ("risco iminente de morte", "risco 
+de óbito a qualquer momento", "emergência máxima"). O texto usa exatamente o mesmo campo 
+"Classificação médica da necessidade de transferência" (5.2) já especificado para o CORE — reaparece 
+aqui, no mesmo formato: 
+CLASSIFICAÇÃO MÉDICA DA NECESSIDADE DE TRANSFERÊNCIA 
+ 
+( ) Sem classificação adicional 
+( ) Prioritária 
+( ) Urgente 
+( ) Emergencial 
+ 
+JUSTIFICATIVA MÉDICA: 
+____________________________________ 
+ 
+☐ Confirmo esta classificação com base no quadro clínico atual. 
+Se houver achados graves nos registros, o sistema avisa que existem e convida o médico a preencher este 
+campo — nunca preenche sozinho, e nenhuma linguagem de urgência entra no texto sem o médico digitá-la 
+manualmente aqui. 
+5.10 Linha do tempo — nova estrutura de suporte 
+Uma coleção eventosTimeline por paciente, alimentada automaticamente como efeito colateral de ações 
+que já acontecem em outras abas — nenhuma tela nova de digitação manual: 
+Evento Gerado a partir de 
+Admissão criação da ficha (2.0) 
+Início/suspensão de medicação aba Prescrição (2.5) 
+Mudança de fluxo de O2 registrada aba Sinais Vitais (2.1) 
+Exame com alerta crítico aba Exames (2.4) 
+Solicitação/atualização CORE 5.7 / 5.8 
+Marcação de vaga judicializada 5.2 
+Usada pelos modos CORE, Atualização CORE e Vaga judicializada (5.7–5.9) para montar o bloco "Linha do 
+tempo"/"Mudanças desde a última atualização" só listando, em ordem, os eventos já registrados no intervalo 
+relevante — sem nenhuma síntese, só concatenação cronológica. 
+---PAGE 22---
+5.11 Regras de segurança específicas destes modos 
+Complementam — não substituem — o padrão de segurança que já vale para o app inteiro (nota final da Parte 
+4): 
+1. Nenhuma classificação automática de urgência/prioridade máxima — sempre o campo "Classificação 
+médica da necessidade de transferência" (5.2), preenchido e confirmado manualmente pelo médico, nos 
+modos CORE e Vaga judicializada (5.7, 5.9). 
+2. Resposta ao tratamento e refratariedade nunca são concluídas pelo sistema sozinho — sempre um 
+formulário confirmado pelo médico, com as medidas pré-marcadas apenas como sugestão (5.6). 
+3. Em vaga judicializada, nenhuma linguagem de urgência entra no texto sem o médico preencher 
+explicitamente a Classificação médica (5.9). 
+4. Todo texto gerado por qualquer um dos 5 modos é rascunho — precisa de revisão e confirmação 
+explícita antes de virar prontuário definitivo ou ser enviado ao CORE, mesmo padrão já usado em todas 
+as outras abas. 
+5. Nenhum dado do paciente é enviado a IA ou serviço externo neste fluxo — todo o processamento roda 
+dentro do MedScript, com dado do próprio banco do hospital. 
+5.12 Interface — chips de contexto na aba Evolução 
+Depois de gerar um rascunho, mostrar uma linha de chips acima do editor (reaproveitando o padrão visual de 
+sugestão já usado em 2.3), permitindo trocar de contexto sem redigitar nada: 
+⚠️ Pendências  ·  📈 Comparar exames  ·  🚑 Converter para CORE  ·  🔄 Atualizar 
+CORE  ·  ⚖️ Vaga judicializada  ·  🏠 Preparar alta 
+"📈 Comparar exames" reaproveita a tendência já especificada em 2.4; os demais chips trocam o template 
+conforme 5.1, sem perder o que já foi digitado no campo de narrativa livre. 
+5.14 Versionamento das tabelas de regras clínicas (recomendação transversal a 2.4 e 2.5) 
+Ponto levantado pela Dra. Letícia e que vale para o app inteiro, não só para a Parte 5: as tabelas de dose e 
+esquema terapêutico já especificadas neste relatório — as 16+3 sugestões por diagnóstico e a calculadora 
+pediátrica (2.5), as 6 condutas críticas por exame (2.4) — não devem ser escritas como valores fixos dentro da 
+lógica do motor. Elas devem virar registros de dados versionados, com fonte e data de revisão, para que uma 
+atualização de diretriz clínica no futuro seja uma edição de dado, nunca uma mudança de código: 
+clinicalRulesVersion = "2026.09.01" 
+ 
+{ 
+  id: "sepse_foco_pulmonar", 
+  versao: "1.0", 
+  revisadoEm: "2026-09-25", 
+  fonte: "Surviving Sepsis Campaign 2026 · ILAS 2023", 
+  ativo: true, 
+  ... 
+} 
+Recomendação prática antes de programar: reservar uma etapa separada de validação clínica dessas tabelas 
+— revisão regra por regra pela própria Dra. Letícia — e só então marcar cada uma como ativo: true. Isso 
+---PAGE 23---
+vale tanto para as tabelas já existentes na Parte 2 quanto para qualquer regra nova que a Parte 5 venha a 
+precisar (ex. limiares de achados graves usados no aviso de 5.7/5.9). 
+5.15 Registro imutável de evoluções e documentos de regulação (assinatura e adendo) 
+Depois de confirmada/assinada pelo médico, uma evolução — ou um documento gerado pelos modos 
+CORE/Atualização CORE/Vaga judicializada (5.7–5.9) — nunca deve ser sobrescrita. Cada registro ganha um 
+estado (rascunho → assinada) com data/hora de criação e de assinatura, e autor: 
+Evolução #001 
+Criada: 25/09/2026 08:04 
+Assinada: 25/09/2026 08:09 
+Autor: Dra. X 
+Status: ASSINADA 
+Uma correção depois da assinatura nunca edita o texto original — cria um adendo vinculado a ele, também 
+assinado: 
+ADENDO À EVOLUÇÃO #001 
+Data/hora: ... 
+Autor: ... 
+Motivo: ... 
+Texto: ... 
+O mesmo princípio vale para as gerações de CORE/Atualização CORE/Vaga judicializada (5.7–5.9): cada uma, 
+uma vez confirmada, entra como uma nova entrada imutável no histórico (5.2) — uma correção é sempre uma 
+nova Atualização CORE ou um novo adendo, nunca uma edição da entrada anterior. Isso é o que sustenta a 
+rastreabilidade do prontuário e a defensibilidade de qualquer um desses documentos depois — inclusive em 
+contexto judicial (5.9), onde a integridade da linha do tempo é o próprio conteúdo do documento. 
+5.16 Nota de escopo 
+Esta parte não duplica nem substitui nada da Parte 2 — é uma camada que fica por cima do motor de Evolução 
+(2.3) e do de Alta (2.8), reaproveitando integralmente Sinais Vitais (2.1), Exame Físico (2.2), Exames com 
+tendência (2.4), Prescrição (2.5), Lista de problemas (2.9) e a lógica de comparação "antes → agora" já existente 
+em Meu Paciente Grave. Não introduz nenhuma dependência de IA generativa, nenhuma chamada de API 
+externa e nenhum custo recorrente por evolução gerada. 
+Visão geral da arquitetura — como as peças da Parte 5 se encaixam nas da Parte 2, do dado bruto até o 
+documento assinado: 
+                    PACIENTE 
+                       │ 
+             ┌─────────┴─────────┐ 
+             ↓                   ↓ 
+       DADOS CLÍNICOS       LINHA DO TEMPO (5.10) 
+     (2.1, 2.2, 2.4, 2.5)         │ 
+             └─────────┬─────────┘ 
+                       ↓ 
+               MOTOR CLÍNICO LOCAL 
+                       ↓ 
+        ┌──────────────┼──────────────┐ 
+---PAGE 24---
+        ↓              ↓              ↓ 
+    ALERTAS        TENDÊNCIAS    PENDÊNCIAS 
+   (2.1, 2.4)         (2.4)      (5.3, 2.10) 
+        └──────────────┼──────────────┘ 
+                       ↓ 
+                MOTOR DE DOCUMENTOS 
+                       │ 
+      ┌────────────────┼─────────────────┐ 
+      ↓                ↓                 ↓ 
+  EVOLUÇÃO (2.3)      CORE (5.7)        ALTA (2.8) 
+                       │ 
+                ┌──────┴──────┐ 
+                ↓             ↓ 
+          ATUALIZAÇÃO     JUDICIALIZADA 
+          CORE (5.8)         (5.9) 
+                       │ 
+                       ↓ 
+                 RASCUNHO EDITÁVEL 
+                       ↓ 
+                  REVISÃO MÉDICA 
+                       ↓ 
+                    ASSINATURA 
+                       ↓ 
+              REGISTRO IMUTÁVEL (5.15) 
+Em nenhum ponto deste fluxo existe uma chamada a IA generativa ou a um serviço externo — todo o 
+processamento, do dado bruto ao documento assinado, roda dentro do próprio MedScript. 

@@ -13,6 +13,7 @@ import { refreshEpisodeRiskLevel } from "@/lib/inpatient/sync-episode-risk";
 import type { ProtocolInternationTransfer } from "@/lib/inpatient/protocol-internation";
 import { computeCriticalLabConducts } from "@/lib/inpatient/lab-critical-conduct";
 import { computeLabAlerts } from "@/lib/inpatient/lab-alerts";
+import { computeDischargePrediction } from "@/lib/inpatient/discharge-prediction";
 import { buildPatientNextSteps } from "@/lib/inpatient/patient-next-steps";
 import { INITIAL_KANBAN_OPTIONS, STATUS_LABELS } from "@/lib/types/patient";
 
@@ -84,6 +85,8 @@ export async function GET() {
   }
 
   const codeStatusByEpisode = new Map<string, string>();
+  const codeUpdatedAtByEpisode = new Map<string, string>();
+  const tevFilledByEpisode = new Map<string, boolean>();
   const pendingReconByEpisode = new Map<string, number>();
   const pendingLabsByEpisode = new Map<
     string,
@@ -91,10 +94,14 @@ export async function GET() {
   >();
 
   if (trackableIds.length > 0) {
-    const [conductRes, reconRes, pendingRes] = await Promise.all([
+    const [conductRes, ordersRes, reconRes, pendingRes] = await Promise.all([
       supabase
         .from("episode_conduct")
-        .select("episode_id, code_status")
+        .select("episode_id, code_status, code_updated_at")
+        .in("episode_id", trackableIds),
+      supabase
+        .from("episode_general_orders")
+        .select("episode_id, padua_score, caprini_score")
         .in("episode_id", trackableIds),
       supabase
         .from("episode_med_reconciliation")
@@ -109,6 +116,21 @@ export async function GET() {
     ]);
     for (const row of conductRes.data ?? []) {
       codeStatusByEpisode.set(row.episode_id, row.code_status);
+      if (row.code_updated_at) {
+        codeUpdatedAtByEpisode.set(
+          row.episode_id,
+          String(row.code_updated_at),
+        );
+      }
+    }
+    for (const row of ordersRes.data ?? []) {
+      const padua = (row.padua_score as Record<string, boolean>) ?? {};
+      const caprini = (row.caprini_score as Record<string, boolean>) ?? {};
+      tevFilledByEpisode.set(
+        row.episode_id,
+        Object.values(padua).some(Boolean) ||
+          Object.values(caprini).some(Boolean),
+      );
     }
     for (const row of reconRes.data ?? []) {
       pendingReconByEpisode.set(
@@ -156,6 +178,16 @@ export async function GET() {
     };
     const labAlerts = computeLabAlerts(bundle.labs);
     const criticalConducts = computeCriticalLabConducts(bundle.labs);
+    const internationHours =
+      (Date.now() - new Date(ep.created_at).getTime()) / (1000 * 60 * 60);
+    const codeUpdatedAt = codeUpdatedAtByEpisode.get(ep.id)
+      ? new Date(codeUpdatedAtByEpisode.get(ep.id)!).getTime()
+      : null;
+    const codeReviewDue =
+      status.risk === "alto" &&
+      (!codeUpdatedAt ||
+        (Date.now() - codeUpdatedAt) / (1000 * 60 * 60) > 48);
+
     const steps = buildPatientNextSteps({
       clinicalStatus: status,
       vitalRecords: bundle.vitals,
@@ -164,9 +196,20 @@ export async function GET() {
       pendingReconciliation: pendingReconByEpisode.get(ep.id) ?? 0,
       pendingLabs: pendingLabsByEpisode.get(ep.id) ?? [],
       codeStatus: (codeStatus as import("@/lib/types/inpatient-chart").CodeStatus) ?? null,
-      internationHours:
-        (Date.now() - new Date(ep.created_at).getTime()) / (1000 * 60 * 60),
+      internationHours,
+      paduaFilled: tevFilledByEpisode.get(ep.id) ?? false,
+      codeReviewDue,
     });
+
+    const prediction = computeDischargePrediction({
+      clinicalStatus: status,
+      labValues: bundle.labs,
+      vitalRecords: bundle.vitals,
+      diagnosis: ep.diagnosis ?? null,
+      codeStatus: (codeStatus as import("@/lib/types/inpatient-chart").CodeStatus) ?? null,
+      activeLabAlertCount: labAlerts.length,
+    });
+
     return {
       ...base,
       clinical_status: {
@@ -175,6 +218,24 @@ export async function GET() {
         discharge_total: status.discharge.total,
         evolution_delay_hours: status.evolutionDelayHours,
         next_step_preview: steps[0]?.text ?? null,
+        next_steps: steps.slice(0, 5).map((s) => ({
+          id: s.id,
+          priority: s.priority,
+          text: s.text,
+          tab: s.tab,
+        })),
+        discharge_prediction: prediction.suppressed
+          ? {
+              suppressed: true,
+              min_days: 0,
+              max_days: 0,
+              suppressed_reason: prediction.suppressedReason,
+            }
+          : {
+              suppressed: false,
+              min_days: prediction.minDays,
+              max_days: prediction.maxDays,
+            },
       },
       ...(codeStatus ? { code_status: codeStatus } : {}),
     };

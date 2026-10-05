@@ -19,6 +19,9 @@ function mapRow(row: Record<string, unknown>): EpisodeTreatmentResponse {
     problem_id: String(row.problem_id),
     response_status: row.response_status as TreatmentResponseStatus,
     notes: String(row.notes ?? ""),
+    linked_prescription_ids: Array.isArray(row.linked_prescription_ids)
+      ? (row.linked_prescription_ids as unknown[]).map(String)
+      : [],
     created_by: row.created_by != null ? String(row.created_by) : null,
     created_at: String(row.created_at),
   };
@@ -61,6 +64,7 @@ export async function PUT(request: Request, context: RouteContext) {
     problem_id?: string;
     response_status?: TreatmentResponseStatus;
     notes?: string;
+    linked_prescription_ids?: string[];
   };
   try {
     body = await request.json();
@@ -92,11 +96,16 @@ export async function PUT(request: Request, context: RouteContext) {
     .eq("problem_id", problemId)
     .maybeSingle();
 
+  const linkedIds = Array.isArray(body.linked_prescription_ids)
+    ? body.linked_prescription_ids.map((id) => String(id).trim()).filter(Boolean)
+    : [];
+
   const payload = {
     episode_id: episodeId,
     problem_id: problemId,
     response_status: status,
     notes: body.notes?.trim() ?? "",
+    linked_prescription_ids: linkedIds,
     created_by: user.id,
   };
 
@@ -109,6 +118,7 @@ export async function PUT(request: Request, context: RouteContext) {
       .update({
         response_status: status,
         notes: payload.notes,
+        linked_prescription_ids: linkedIds,
         created_by: user.id,
       })
       .eq("id", existing.id)

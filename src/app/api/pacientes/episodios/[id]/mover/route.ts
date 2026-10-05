@@ -157,6 +157,21 @@ export async function POST(request: Request, context: RouteContext) {
     }
   }
 
+  if (
+    fromStatus === "em_observacao" &&
+    to_status === "internado" &&
+    report_text?.trim()
+  ) {
+    const promoHtml = `<p><strong>Promoção para internação formal</strong> — ${new Date().toLocaleString("pt-BR")}</p><p>${report_text.trim().replace(/</g, "&lt;")}</p>`;
+    await supabase.from("episode_evolutions").insert({
+      episode_id: episodeId,
+      content_html: promoHtml,
+      created_by: user!.id,
+      signed_at: nowIso,
+      signed_by: user!.id,
+    });
+  }
+
   if (to_status === "internado") {
     const patient = updated.patient as import("@/lib/types/patient").Patient;
     const ep = updated as import("@/lib/types/patient").PatientEpisode;

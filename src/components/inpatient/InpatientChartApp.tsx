@@ -297,6 +297,7 @@ export default function InpatientChartApp({
             pendingLabs={labBundle.pending}
             pendingReconciliation={pendingReconciliation}
             codeStatus={conduct?.code_status ?? null}
+            codeUpdatedAt={conduct?.code_updated_at ?? null}
             episode={episode}
             paduaFilled={Boolean(
               generalOrders &&

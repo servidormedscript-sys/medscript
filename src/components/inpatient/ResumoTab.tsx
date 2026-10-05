@@ -49,6 +49,7 @@ type Props = {
   codeStatus?: CodeStatus | null;
   episode: PatientEpisode;
   paduaFilled: boolean;
+  codeUpdatedAt?: string | null;
   problems: EpisodeProblem[];
   comorbidities: EpisodeComorbidities;
   counts: {
@@ -83,6 +84,7 @@ export default function ResumoTab({
   codeStatus,
   episode,
   paduaFilled,
+  codeUpdatedAt,
   problems,
   comorbidities,
   counts,
@@ -124,6 +126,12 @@ export default function ResumoTab({
           (Date.now() - new Date(episode.created_at).getTime()) /
           (1000 * 60 * 60),
         paduaFilled,
+        codeReviewDue:
+          clinicalStatus.risk === "alto" &&
+          (!codeUpdatedAt ||
+            (Date.now() - new Date(codeUpdatedAt).getTime()) /
+              (1000 * 60 * 60) >
+              48),
       }),
     [
       clinicalStatus,
@@ -135,6 +143,7 @@ export default function ResumoTab({
       codeStatus,
       episode.created_at,
       paduaFilled,
+      codeUpdatedAt,
     ],
   );
 

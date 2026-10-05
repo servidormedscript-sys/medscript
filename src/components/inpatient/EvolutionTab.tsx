@@ -22,9 +22,17 @@ import {
 } from "@/lib/inpatient/evolution-utils";
 import type { EpisodeComorbidities } from "@/lib/types/inpatient-chart";
 import {
+  buildCoreClinicalSnapshot,
+  type CoreClinicalSnapshot,
+} from "@/lib/inpatient/core-clinical-snapshot";
+import {
   detectEvolutionKeywordSuggestions,
   keywordSuggestionDisclaimer,
 } from "@/lib/inpatient/evolution-keywords";
+import {
+  defaultLinkedPrescriptionIds,
+  prescriptionsForProblem,
+} from "@/lib/inpatient/treatment-response-meds";
 import {
   buildAcuteMedicationLines,
   buildActivePrescriptionLines,
@@ -102,6 +110,11 @@ export default function EvolutionTab({
   );
   const [coreCount, setCoreCount] = useState(0);
   const [lastCoreAt, setLastCoreAt] = useState<string | null>(null);
+  const [firstCoreRequestAt, setFirstCoreRequestAt] = useState<string | null>(
+    null,
+  );
+  const [lastCoreSnapshot, setLastCoreSnapshot] =
+    useState<CoreClinicalSnapshot | null>(null);
   const [storedTimeline, setStoredTimeline] = useState<
     { occurred_at: string; event_type: string; summary_text: string }[]
   >([]);
@@ -109,7 +122,14 @@ export default function EvolutionTab({
     EpisodeTreatmentResponse[]
   >([]);
   const [responseDrafts, setResponseDrafts] = useState<
-    Record<string, { status: TreatmentResponseStatus; notes: string }>
+    Record<
+      string,
+      {
+        status: TreatmentResponseStatus;
+        notes: string;
+        linkedPrescriptionIds: string[];
+      }
+    >
   >({});
   const [editingDraftId, setEditingDraftId] = useState<string | null>(null);
   const [addendumParentId, setAddendumParentId] = useState<string | null>(null);
@@ -125,6 +145,8 @@ export default function EvolutionTab({
       if (cancelled || !res.ok) return;
       setCoreCount(data.core_generations_count ?? 0);
       setLastCoreAt(data.last_core_generated_at ?? null);
+      setFirstCoreRequestAt(data.first_core_request_at ?? null);
+      setLastCoreSnapshot(data.last_core_clinical_snapshot ?? null);
       setStoredTimeline(data.stored_timeline ?? []);
       setTreatmentResponses(data.treatment_responses ?? []);
     })();
@@ -241,6 +263,12 @@ export default function EvolutionTab({
       prescriptions,
       reconciliation,
       lastCoreGeneratedAt: lastCoreAt,
+      firstCoreRequestAt,
+      previousCoreSnapshot: lastCoreSnapshot,
+      currentCoreSnapshot: buildCoreClinicalSnapshot({
+        vitalRecords,
+        labValues,
+      }),
     });
     setEditorHtml(html);
     setKeywordPlain(htmlToPlainText(html));
@@ -257,6 +285,10 @@ export default function EvolutionTab({
     prescriptions,
     reconciliation,
     lastCoreAt,
+    firstCoreRequestAt,
+    lastCoreSnapshot,
+    vitalRecords,
+    labValues,
   ]);
 
   useEffect(() => {
@@ -276,17 +308,26 @@ export default function EvolutionTab({
   useEffect(() => {
     const next: Record<
       string,
-      { status: TreatmentResponseStatus; notes: string }
+      {
+        status: TreatmentResponseStatus;
+        notes: string;
+        linkedPrescriptionIds: string[];
+      }
     > = {};
     for (const pr of problems.filter((p) => p.active)) {
       const saved = treatmentResponses.find((r) => r.problem_id === pr.id);
+      const defaults = defaultLinkedPrescriptionIds(pr, prescriptions);
       next[pr.id] = {
         status: saved?.response_status ?? "sem_mudanca",
         notes: saved?.notes ?? "",
+        linkedPrescriptionIds:
+          saved?.linked_prescription_ids?.length
+            ? saved.linked_prescription_ids
+            : defaults,
       };
     }
     setResponseDrafts(next);
-  }, [problems, treatmentResponses]);
+  }, [problems, treatmentResponses, prescriptions]);
 
   async function saveTreatmentResponse(problemId: string) {
     const draft = responseDrafts[problemId];
@@ -300,6 +341,7 @@ export default function EvolutionTab({
           problem_id: problemId,
           response_status: draft.status,
           notes: draft.notes,
+          linked_prescription_ids: draft.linkedPrescriptionIds,
         }),
       },
     );
@@ -649,6 +691,8 @@ export default function EvolutionTab({
                             [pr.id]: {
                               status: e.target.value as TreatmentResponseStatus,
                               notes: d[pr.id]?.notes ?? "",
+                              linkedPrescriptionIds:
+                                d[pr.id]?.linkedPrescriptionIds ?? [],
                             },
                           }))
                         }
@@ -670,12 +714,55 @@ export default function EvolutionTab({
                             [pr.id]: {
                               status: d[pr.id]?.status ?? "sem_mudanca",
                               notes: e.target.value,
+                              linkedPrescriptionIds:
+                                d[pr.id]?.linkedPrescriptionIds ?? [],
                             },
                           }))
                         }
                         className="min-w-[12rem] flex-1 rounded border border-navy-900/15 px-2 py-1 text-xs"
                       />
                     </div>
+                    {prescriptionsForProblem(pr, prescriptions).length > 0 && (
+                      <ul className="mt-2 space-y-1 text-[11px] text-navy-900">
+                        {prescriptionsForProblem(pr, prescriptions).map(
+                          (rx) => {
+                            const checked = (
+                              responseDrafts[pr.id]?.linkedPrescriptionIds ??
+                              []
+                            ).includes(rx.id);
+                            return (
+                              <li key={rx.id} className="flex items-start gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    const prev =
+                                      responseDrafts[pr.id]
+                                        ?.linkedPrescriptionIds ?? [];
+                                    const linkedPrescriptionIds = e.target
+                                      .checked
+                                      ? [...prev, rx.id]
+                                      : prev.filter((id) => id !== rx.id);
+                                    setResponseDrafts((d) => ({
+                                      ...d,
+                                      [pr.id]: {
+                                        status:
+                                          d[pr.id]?.status ?? "sem_mudanca",
+                                        notes: d[pr.id]?.notes ?? "",
+                                        linkedPrescriptionIds,
+                                      },
+                                    }));
+                                  }}
+                                />
+                                <span>
+                                  {rx.name} — {rx.dose} {rx.route}
+                                </span>
+                              </li>
+                            );
+                          },
+                        )}
+                      </ul>
+                    )}
                   </div>
                   <button
                     type="button"

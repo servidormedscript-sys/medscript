@@ -66,12 +66,28 @@ export type PatientMovement = {
 import type { EpisodeCareSummary } from "@/lib/patient-care-summary";
 import type { PatientCareItem } from "@/lib/types/patient-care";
 
+export type KanbanNextStepSummary = {
+  id: string;
+  priority: "urgent" | "attention" | "positive";
+  text: string;
+  tab: string;
+};
+
+export type KanbanDischargePredictionSummary = {
+  min_days: number;
+  max_days: number;
+  suppressed: boolean;
+  suppressed_reason?: string;
+};
+
 export type EpisodeClinicalStatusSummary = {
   risk: RiskLevel;
   discharge_met: number;
   discharge_total: number;
   evolution_delay_hours: number;
   next_step_preview?: string | null;
+  next_steps?: KanbanNextStepSummary[];
+  discharge_prediction?: KanbanDischargePredictionSummary | null;
 };
 
 export type KanbanEpisode = PatientEpisode & {

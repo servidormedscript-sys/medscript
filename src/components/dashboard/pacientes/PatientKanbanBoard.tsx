@@ -296,6 +296,11 @@ export default function PatientKanbanBoard() {
                           key={episode.id}
                           episode={episode}
                           onMove={() => openMoveModal(episode)}
+                          onPromote={
+                            episode.status === "em_observacao"
+                              ? () => openMoveModal(episode, "internado")
+                              : undefined
+                          }
                           onView={() => setViewEpisode(episode)}
                           onDragStart={(ep) => setDraggingEpisodeId(ep.id)}
                           onDragEnd={() => {
