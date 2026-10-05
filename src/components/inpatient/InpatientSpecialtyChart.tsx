@@ -13,12 +13,14 @@ type Props = {
   rows: SpecialtyChartRow[];
   compact?: boolean;
   highlightSpecialty?: string | null;
+  onSelectSpecialty?: (key: string | null) => void;
 };
 
 export default function InpatientSpecialtyChart({
   rows,
   compact,
   highlightSpecialty,
+  onSelectSpecialty,
 }: Props) {
   const max = rows.reduce((m, r) => Math.max(m, r.count), 0) || 1;
 
@@ -36,8 +38,20 @@ export default function InpatientSpecialtyChart({
         const widthPct = Math.max(8, (row.count / max) * 100);
         const dimmed =
           highlightSpecialty && highlightSpecialty !== row.key ? "opacity-40" : "";
+        const selected = highlightSpecialty === row.key;
         return (
           <li key={row.key} className={dimmed}>
+            <button
+              type="button"
+              className={`w-full rounded-md text-left transition-colors ${
+                onSelectSpecialty ? "hover:bg-navy-50/80 focus:outline-none focus:ring-2 focus:ring-navy-700/25" : ""
+              } ${selected ? "bg-navy-50/90 px-1 -mx-1" : ""}`}
+              onClick={() => {
+                if (!onSelectSpecialty) return;
+                onSelectSpecialty(selected ? null : row.key);
+              }}
+              disabled={!onSelectSpecialty}
+            >
             <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2 text-sm">
               <span className="font-medium text-navy-950">
                 {row.label}
@@ -73,6 +87,7 @@ export default function InpatientSpecialtyChart({
                   />
                 )}
             </div>
+            </button>
           </li>
         );
       })}

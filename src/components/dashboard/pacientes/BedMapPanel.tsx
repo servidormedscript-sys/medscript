@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { BedMapPayload } from "@/lib/inpatient/bed-map-data";
-import { INPATIENT_SPECIALTY_OPTIONS } from "@/lib/inpatient/specialty";
+import {
+  episodeMatchesSpecialtyFilter,
+  INPATIENT_SPECIALTY_OPTIONS,
+  specialtyLabel,
+} from "@/lib/inpatient/specialty";
 import { inpatientChartUrl } from "@/lib/dashboard/inpatient-chart-url";
 import InpatientSpecialtyChart from "@/components/inpatient/InpatientSpecialtyChart";
 import { useClinicRealtime } from "@/hooks/useClinicRealtime";
@@ -21,17 +25,21 @@ const RISK_BORDER: Record<RiskLevel, string> = {
 
 type Props = {
   onInternarAqui: (bed: { id: string; code: string; unit: string }) => void;
+  specialtyFilter: string;
+  onSpecialtyFilterChange: (key: string) => void;
 };
 
-export default function BedMapPanel({ onInternarAqui }: Props) {
+export default function BedMapPanel({
+  onInternarAqui,
+  specialtyFilter,
+  onSpecialtyFilterChange,
+}: Props) {
   const [data, setData] = useState<BedMapPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [unitFilter, setUnitFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<OrganizationBedStatus | "">("");
   const [riskFilter, setRiskFilter] = useState<RiskLevel | "">("");
-  const [specialtyFilter, setSpecialtyFilter] = useState<string>("");
-
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -70,9 +78,26 @@ export default function BedMapPanel({ onInternarAqui }: Props) {
       if (unitFilter && (bed.unit || "Sem setor") !== unitFilter) return false;
       if (statusFilter && bed.status !== statusFilter) return false;
       if (riskFilter && bed.episode?.risk !== riskFilter) return false;
+      if (
+        specialtyFilter &&
+        bed.episode &&
+        !episodeMatchesSpecialtyFilter(
+          {
+            status: "internado",
+            care_specialty: bed.episode.care_specialty,
+            diagnosis: bed.episode.diagnosis,
+          },
+          specialtyFilter,
+        )
+      ) {
+        return false;
+      }
+      if (specialtyFilter && bed.status === "ocupado" && !bed.episode) {
+        return false;
+      }
       return true;
     });
-  }, [data?.beds, unitFilter, statusFilter, riskFilter]);
+  }, [data?.beds, unitFilter, statusFilter, riskFilter, specialtyFilter]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, BedMapPayload["beds"]>();
@@ -137,7 +162,19 @@ export default function BedMapPanel({ onInternarAqui }: Props) {
                 <InpatientSpecialtyChart
                   rows={data.specialty_chart}
                   highlightSpecialty={specialtyFilter || null}
+                  onSelectSpecialty={(key) =>
+                    onSpecialtyFilterChange(key ?? "")
+                  }
                 />
+                {specialtyFilter && (
+                  <p className="mt-2 text-xs text-navy-800/60">
+                    Filtrando leitos ocupados:{" "}
+                    <span className="font-medium text-navy-900">
+                      {specialtyLabel(specialtyFilter)}
+                    </span>
+                    . Clique na barra novamente para limpar.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -192,7 +229,7 @@ export default function BedMapPanel({ onInternarAqui }: Props) {
                   <select
                     className="mt-1 w-full rounded-md border border-navy-900/12 px-2 py-1.5"
                     value={specialtyFilter}
-                    onChange={(e) => setSpecialtyFilter(e.target.value)}
+                    onChange={(e) => onSpecialtyFilterChange(e.target.value)}
                   >
                     <option value="">Nenhum</option>
                     {INPATIENT_SPECIALTY_OPTIONS.map((o) => (

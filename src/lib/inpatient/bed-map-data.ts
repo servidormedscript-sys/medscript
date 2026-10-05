@@ -16,6 +16,7 @@ export type BedMapPayload = {
       id: string;
       patient_name: string;
       diagnosis: string | null;
+      care_specialty: string | null;
       risk: RiskLevel;
     } | null;
   }>;
@@ -68,7 +69,12 @@ export async function buildBedMapPayload(
 
   const episodeMeta = new Map<
     string,
-    { patient_name: string; diagnosis: string | null; risk: RiskLevel }
+    {
+      patient_name: string;
+      diagnosis: string | null;
+      care_specialty: string | null;
+      risk: RiskLevel;
+    }
   >();
 
   const internadosForChart = internados.map((ep) => {
@@ -82,6 +88,7 @@ export async function buildBedMapPayload(
     episodeMeta.set(ep.id, {
       patient_name: p?.full_name ?? "—",
       diagnosis: ep.diagnosis,
+      care_specialty: ep.care_specialty,
       risk: status.risk,
     });
     return {
@@ -117,6 +124,7 @@ export async function buildBedMapPayload(
               id: bed.episode_id,
               patient_name: meta.patient_name,
               diagnosis: meta.diagnosis,
+              care_specialty: meta.care_specialty,
               risk: meta.risk,
             }
           : null,

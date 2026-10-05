@@ -33,6 +33,13 @@ import type {
 } from "@/lib/types/inpatient-chart";
 import type { Patient, PatientEpisode } from "@/lib/types/patient";
 import { calculateAge } from "@/lib/utils/age";
+import {
+  buildObjectiveWorseningParagraph,
+  buildRegulationDocumentSections,
+  filterLabsSince,
+  formatTreatmentResponsesSinceLastCore,
+} from "@/lib/inpatient/core-regulation-sections";
+import type { EpisodeImagingReport } from "@/lib/types/inpatient-chart";
 
 const CORE_STATUS_LABEL: Record<string, string> = {
   nenhum: "Nenhum",
@@ -183,6 +190,28 @@ function buildRegulationBaseSections(input: {
   return parts;
 }
 
+function appendRegulationDocumentBlocks(
+  parts: string[],
+  sections: ReturnType<typeof buildRegulationDocumentSections>,
+): void {
+  if (sections.aviso_gravidade.trim()) {
+    parts.push(p(sections.aviso_gravidade));
+  }
+  parts.push(p("EVOLUÇÃO CLÍNICA REGISTRADA", true));
+  parts.push(p(sections.evolucao_registrada));
+  parts.push(p("EXAMES LABORATORIAIS", true));
+  parts.push(p(sections.exames_laboratoriais));
+  parts.push(p("TENDÊNCIA LABORATORIAL", true));
+  parts.push(p(sections.tendencia_laboratorial));
+  parts.push(p("EXAMES DE IMAGEM", true));
+  parts.push(p(sections.exames_imagem));
+  parts.push(p("IMPRESSÃO", true));
+  parts.push(p(sections.impressao));
+  parts.push(p("JUSTIFICATIVA DE TRANSFERÊNCIA", true));
+  parts.push(p(sections.justificativa_transferencia));
+  parts.push(p(sections.classificacao_transferencia));
+}
+
 export function buildEvolutionDraftForMode(
   mode: EvolutionDraftMode,
   input: {
@@ -194,6 +223,7 @@ export function buildEvolutionDraftForMode(
     evolutions: EpisodeEvolution[];
     prescriptions: EpisodePrescription[];
     reconciliation: EpisodeMedReconciliation[];
+    imagingReports?: EpisodeImagingReport[];
     lastCoreGeneratedAt?: string | null;
     firstCoreRequestAt?: string | null;
     previousCoreSnapshot?: CoreClinicalSnapshot | null;
@@ -239,7 +269,18 @@ export function buildEvolutionDraftForMode(
       labValues: input.ctx.labValues ?? [],
     });
 
+  const imaging =
+    input.imagingReports ?? input.ctx.imagingReports ?? [];
+  const allLabs = input.ctx.labValues ?? [];
+
   if (mode === "judicializada") {
+    const regSections = buildRegulationDocumentSections({
+      ctx: input.ctx,
+      conduct,
+      problems: input.problems,
+      evolutions: input.evolutions,
+      imagingReports: imaging,
+    });
     const parts = [
       p(`SOLICITAÇÃO — VAGA JUDICIALIZADA — ${dateLine}`, true),
       p(
@@ -249,6 +290,9 @@ export function buildEvolutionDraftForMode(
         conduct.judicial_started_at
           ? `Início da judicialização: ${new Date(conduct.judicial_started_at).toLocaleString("pt-BR")}`
           : "Data de início da judicialização não registrada.",
+      ),
+      p(
+        "Documento para regulação judicial — utilize a linha do tempo e os blocos abaixo; o sistema não atribui urgência automática à transferência.",
       ),
       ...buildRegulationBaseSections({
         patient: input.ctx.patient,
@@ -260,10 +304,13 @@ export function buildEvolutionDraftForMode(
         treatmentResponses: input.treatmentResponses,
         prescriptions: input.prescriptions,
       }),
+      p("JUSTIFICATIVA CLÍNICA (VAGA JUDICIALIZADA)", true),
+      p(regSections.justificativa_transferencia),
       p(
-        "Justificativa clínica para vaga judicializada: [descrever necessidade de recurso não disponível na unidade e risco de permanência]",
+        "Fundamentação adicional: [descrever risco de permanência na unidade atual e recurso indisponível localmente]",
       ),
     ];
+    appendRegulationDocumentBlocks(parts, regSections);
     return parts.join("\n");
   }
 
@@ -287,10 +334,26 @@ export function buildEvolutionDraftForMode(
     }),
   ];
 
+  const labsForDoc =
+    mode === "core_atualizacao"
+      ? filterLabsSince(allLabs, since)
+      : allLabs;
+  const regSections = buildRegulationDocumentSections({
+    ctx: input.ctx,
+    conduct,
+    problems: input.problems,
+    evolutions: input.evolutions,
+    imagingReports: imaging,
+    labsSince: labsForDoc,
+  });
+  appendRegulationDocumentBlocks(parts, regSections);
+
   if (mode === "core_inicial") {
+    parts.push(p("SÍNTESE PARA REGULAÇÃO", true));
+    parts.push(p(regSections.justificativa_transferencia));
     parts.push(
       p(
-        "Síntese para regulação: [resumir gravidade, estabilidade hemodinâmica, suporte necessário e motivo da transferência]",
+        `[Complementar: estabilidade hemodinâmica, suportes em uso e expectativa de transferência]`,
       ),
     );
   } else if (mode === "core_atualizacao") {
@@ -313,8 +376,10 @@ export function buildEvolutionDraftForMode(
       }
     }
     parts.push(p("MUDANÇAS DESDE A ÚLTIMA REFERÊNCIA CORE:", true));
+    const diffLines: string[] = [];
     if (previousSnap) {
       for (const line of compareCoreClinicalSnapshots(previousSnap, currentSnap)) {
+        diffLines.push(line);
         parts.push(p(line));
       }
     } else {
@@ -324,6 +389,35 @@ export function buildEvolutionDraftForMode(
         ),
       );
     }
+    parts.push(p("EXAMES LABORATORIAIS DESDE A ÚLTIMA CORE", true));
+    parts.push(
+      p(
+        labsForDoc.length > 0
+          ? regSections.exames_laboratoriais
+          : "Nenhum exame laboratorial novo desde a última atualização CORE.",
+      ),
+    );
+    parts.push(p("RESPOSTA AO TRATAMENTO DESDE A ÚLTIMA ATUALIZAÇÃO", true));
+    parts.push(
+      p(
+        formatTreatmentResponsesSinceLastCore({
+          problems: input.problems,
+          responses: input.treatmentResponses,
+          prescriptions: input.prescriptions,
+          sinceIso: since,
+        }),
+      ),
+    );
+    parts.push(p("PIORA CLÍNICA OBJETIVA", true));
+    parts.push(
+      p(
+        buildObjectiveWorseningParagraph(
+          diffLines,
+          input.problems,
+          input.treatmentResponses,
+        ),
+      ),
+    );
   }
 
   return parts.join("\n");

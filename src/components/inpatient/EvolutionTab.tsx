@@ -15,6 +15,7 @@ import {
   type EvolutionDraftMode,
 } from "@/lib/inpatient/evolution-context";
 import { checkRegulationCompleteness } from "@/lib/inpatient/regulation-completeness";
+import { regulationSeverityWarning } from "@/lib/inpatient/core-regulation-sections";
 import {
   evolutionDisplayNumber,
   isEvolutionSigned,
@@ -216,6 +217,15 @@ export default function EvolutionTab({
     conduct?.no_specific_treatment,
     conduct?.no_treatment_response_waiver,
   ]);
+
+  const severityWarning = useMemo(() => {
+    if (!conduct || !modeUsesRegulationCheck(suggestedMode)) return null;
+    return regulationSeverityWarning({
+      conduct,
+      vitalRecords,
+      labValues,
+    });
+  }, [conduct, suggestedMode, vitalRecords, labValues]);
 
   const draftCtx = useMemo(
     () => ({
@@ -616,6 +626,15 @@ export default function EvolutionTab({
               {formatTimelineBlock(timeline.slice(0, 25))}
             </pre>
           </details>
+        )}
+
+        {severityWarning && (
+          <div
+            className="mt-4 rounded-md border border-red-300 bg-red-50/90 p-3"
+            role="alert"
+          >
+            <p className="text-sm text-red-950">{severityWarning}</p>
+          </div>
         )}
 
         {pendencies.length > 0 && (

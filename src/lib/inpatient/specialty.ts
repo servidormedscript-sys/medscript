@@ -67,3 +67,21 @@ export function resolveEpisodeSpecialty(input: {
   if (!inferred) return null;
   return { key: inferred, inferred: true };
 }
+
+export function episodeMatchesSpecialtyFilter(
+  episode: {
+    status: string;
+    care_specialty?: string | null;
+    diagnosis?: string | null;
+  },
+  filterKey: string,
+): boolean {
+  if (!filterKey) return true;
+  if (episode.status !== "internado") return true;
+  const resolved = resolveEpisodeSpecialty({
+    care_specialty: episode.care_specialty,
+    diagnosis: episode.diagnosis,
+  });
+  const key = resolved?.key ?? "outra";
+  return key === filterKey;
+}

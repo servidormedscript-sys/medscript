@@ -18,6 +18,12 @@ import PatientFichasManager from "./PatientFichasManager";
 import PatientSummaryPanel from "./PatientSummaryPanel";
 import BedMapPanel from "./BedMapPanel";
 import EditPatientFichaModal from "./EditPatientFichaModal";
+import InpatientSpecialtyChart from "@/components/inpatient/InpatientSpecialtyChart";
+import { buildSpecialtyChart } from "@/lib/inpatient/specialty-aggregation";
+import {
+  episodeMatchesSpecialtyFilter,
+  specialtyLabel,
+} from "@/lib/inpatient/specialty";
 
 type KanbanData = Record<PatientStatus, KanbanEpisode[]>;
 
@@ -64,6 +70,7 @@ export default function PatientKanbanBoard() {
   const [dragOverColumn, setDragOverColumn] = useState<PatientStatus | null>(null);
   const [viewEpisode, setViewEpisode] = useState<KanbanEpisode | null>(null);
   const [editEpisode, setEditEpisode] = useState<KanbanEpisode | null>(null);
+  const [specialtyFilter, setSpecialtyFilter] = useState("");
 
   const loadKanban = useCallback(async () => {
     setLoading(true);
@@ -105,7 +112,36 @@ export default function PatientKanbanBoard() {
     if (searchParams.get("internar") === "1") {
       setShowNewPatient(true);
     }
+
+    const specialty = searchParams.get("specialty");
+    if (specialty) {
+      setSpecialtyFilter(specialty);
+    }
   }, [searchParams]);
+
+  const specialtyChartRows = useMemo(
+    () =>
+      buildSpecialtyChart(
+        (kanban.internado ?? []).map((ep) => ({
+          status: ep.status,
+          care_specialty: ep.care_specialty,
+          diagnosis: ep.diagnosis,
+          clinical_risk: ep.clinical_status?.risk ?? ep.risk_level ?? "baixo",
+        })),
+      ),
+    [kanban.internado],
+  );
+
+  const displayKanban = useMemo(() => {
+    if (!specialtyFilter) return kanban;
+    const next = emptyKanban();
+    for (const status of KANBAN_COLUMNS) {
+      next[status] = (kanban[status] ?? []).filter((ep) =>
+        episodeMatchesSpecialtyFilter(ep, specialtyFilter),
+      );
+    }
+    return next;
+  }, [kanban, specialtyFilter]);
 
   const draggingEpisode = useMemo(
     () => (draggingEpisodeId ? findEpisode(kanban, draggingEpisodeId) : null),
@@ -263,6 +299,43 @@ export default function PatientKanbanBoard() {
               Arraste o card para outra coluna ou use o botão Movimentar para
               preencher o relatório.
             </p>
+            {specialtyChartRows.length > 0 && (
+              <div className="mb-6 rounded-lg border border-navy-900/8 bg-white p-4">
+                <h3 className="text-sm font-medium text-navy-950">
+                  Internados por especialidade
+                </h3>
+                <p className="mt-1 text-xs text-navy-800/55">
+                  Clique em uma barra para filtrar o Kanban (coluna Internado e
+                  demais colunas, se o paciente corresponder).
+                </p>
+                <div className="mt-3 max-w-xl">
+                  <InpatientSpecialtyChart
+                    rows={specialtyChartRows}
+                    compact
+                    highlightSpecialty={specialtyFilter || null}
+                    onSelectSpecialty={(key) =>
+                      setSpecialtyFilter(key ?? "")
+                    }
+                  />
+                </div>
+                {specialtyFilter && (
+                  <p className="mt-2 text-xs text-navy-800/60">
+                    Filtro ativo:{" "}
+                    <span className="font-medium text-navy-900">
+                      {specialtyLabel(specialtyFilter)}
+                    </span>
+                    .{" "}
+                    <button
+                      type="button"
+                      className="underline"
+                      onClick={() => setSpecialtyFilter("")}
+                    >
+                      Limpar
+                    </button>
+                  </p>
+                )}
+              </div>
+            )}
             <div className="grid gap-4 xl:grid-cols-4">
               {KANBAN_COLUMNS.map((status) => {
                 const isDropTarget =
@@ -287,11 +360,11 @@ export default function PatientKanbanBoard() {
                         {STATUS_LABELS[status]}
                       </h3>
                       <p className="text-xs text-navy-800/50">
-                        {kanban[status]?.length ?? 0} paciente(s)
+                        {displayKanban[status]?.length ?? 0} paciente(s)
                       </p>
                     </div>
                     <div className="flex-1 space-y-3 p-3">
-                      {(kanban[status] ?? []).map((episode) => (
+                      {(displayKanban[status] ?? []).map((episode) => (
                         <PatientKanbanCard
                           key={episode.id}
                           episode={episode}
@@ -310,7 +383,7 @@ export default function PatientKanbanBoard() {
                           isDragging={draggingEpisodeId === episode.id}
                         />
                       ))}
-                      {(kanban[status] ?? []).length === 0 && (
+                      {(displayKanban[status] ?? []).length === 0 && (
                         <p className="py-8 text-center text-xs text-navy-800/40">
                           {draggingEpisode &&
                           canDropOnColumn(draggingEpisode.status, status)
@@ -327,6 +400,8 @@ export default function PatientKanbanBoard() {
         )
       ) : activeTab === "mapa-leitos" ? (
         <BedMapPanel
+          specialtyFilter={specialtyFilter}
+          onSpecialtyFilterChange={setSpecialtyFilter}
           onInternarAqui={(bed) => {
             setPrefillBed(bed);
             setShowNewPatient(true);
