@@ -90,7 +90,7 @@ export default function ProtocolDetail({ protocol }: ProtocolDetailProps) {
         suggestedDiagnosis={protocol.keywords[0] ? `${protocol.name}` : ""}
       />
 
-      {interactive ? <ProtocolAdmissionVitalsBar /> : null}
+      <ProtocolAdmissionVitalsBar />
 
       {InteractiveModule ? <InteractiveModule /> : null}
 

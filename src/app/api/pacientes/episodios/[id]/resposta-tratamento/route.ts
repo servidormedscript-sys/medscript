@@ -3,6 +3,8 @@ import {
   assertChartAccess,
   getEpisodeForOrg,
 } from "@/lib/api/require-episode";
+import { appendTimelineEvent } from "@/lib/inpatient/timeline-db";
+import { TREATMENT_RESPONSE_LABELS } from "@/lib/inpatient/treatment-response-format";
 import type {
   EpisodeTreatmentResponse,
   TreatmentResponseStatus,
@@ -10,7 +12,13 @@ import type {
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-const VALID: TreatmentResponseStatus[] = ["melhora", "sem_mudanca", "piora"];
+const VALID: TreatmentResponseStatus[] = [
+  "melhora",
+  "melhora_parcial",
+  "sem_mudanca",
+  "sem_resposta",
+  "piora",
+];
 
 function mapRow(row: Record<string, unknown>): EpisodeTreatmentResponse {
   return {
@@ -24,6 +32,8 @@ function mapRow(row: Record<string, unknown>): EpisodeTreatmentResponse {
       : [],
     created_by: row.created_by != null ? String(row.created_by) : null,
     created_at: String(row.created_at),
+    updated_at:
+      row.updated_at != null ? String(row.updated_at) : String(row.created_at),
   };
 }
 
@@ -100,6 +110,7 @@ export async function PUT(request: Request, context: RouteContext) {
     ? body.linked_prescription_ids.map((id) => String(id).trim()).filter(Boolean)
     : [];
 
+  const now = new Date().toISOString();
   const payload = {
     episode_id: episodeId,
     problem_id: problemId,
@@ -107,6 +118,7 @@ export async function PUT(request: Request, context: RouteContext) {
     notes: body.notes?.trim() ?? "",
     linked_prescription_ids: linkedIds,
     created_by: user.id,
+    updated_at: now,
   };
 
   let row: Record<string, unknown> | null = null;
@@ -120,6 +132,7 @@ export async function PUT(request: Request, context: RouteContext) {
         notes: payload.notes,
         linked_prescription_ids: linkedIds,
         created_by: user.id,
+        updated_at: new Date().toISOString(),
       })
       .eq("id", existing.id)
       .select("*")
@@ -142,6 +155,19 @@ export async function PUT(request: Request, context: RouteContext) {
       { status: 500 },
     );
   }
+
+  const { data: problemRow } = await supabase
+    .from("episode_problems")
+    .select("text")
+    .eq("id", problemId)
+    .maybeSingle();
+
+  await appendTimelineEvent(supabase, {
+    episode_id: episodeId,
+    event_type: "resposta_tratamento",
+    summary_text: `Resposta ao tratamento (${TREATMENT_RESPONSE_LABELS[status]}): ${problemRow?.text ?? "problema"}`,
+    source_id: String(row.id),
+  });
 
   return NextResponse.json({ response: mapRow(row) });
 }

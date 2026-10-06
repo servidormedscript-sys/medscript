@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { comorbidityLabels } from "@/lib/inpatient/comorbidities";
 import { buildChartTimeline, formatTimelineBlock } from "@/lib/inpatient/chart-timeline";
 import {
@@ -53,6 +53,14 @@ import type {
   TreatmentResponseStatus,
 } from "@/lib/types/inpatient-chart";
 import type { Patient, PatientEpisode } from "@/lib/types/patient";
+import { formatLabDayLines } from "@/lib/inpatient/lab-summary";
+import LabOcrImporter from "@/components/inpatient/LabOcrImporter";
+import LabComparePanel from "@/components/inpatient/LabComparePanel";
+import {
+  buildTreatmentResponseInvites,
+  detectO2FlowIncreaseSentence,
+} from "@/lib/inpatient/treatment-response-hints";
+import { TREATMENT_RESPONSE_LABELS } from "@/lib/inpatient/treatment-response-format";
 import SimpleRichTextEditor, {
   htmlToPlainText,
 } from "./SimpleRichTextEditor";
@@ -75,13 +83,15 @@ type Props = {
   comorbidities?: EpisodeComorbidities | null;
   problems: EpisodeProblem[];
   dischargeConfirmed: boolean;
+  onLabBundleRefresh?: () => void | Promise<void>;
 };
 
-const RESPONSE_OPTIONS: { value: TreatmentResponseStatus; label: string }[] = [
-  { value: "melhora", label: "Melhora" },
-  { value: "sem_mudanca", label: "Sem mudança" },
-  { value: "piora", label: "Piora" },
-];
+const RESPONSE_OPTIONS: { value: TreatmentResponseStatus; label: string }[] = (
+  Object.entries(TREATMENT_RESPONSE_LABELS) as [
+    TreatmentResponseStatus,
+    string,
+  ][]
+).map(([value, label]) => ({ value, label }));
 
 export default function EvolutionTab({
   episodeId,
@@ -101,6 +111,7 @@ export default function EvolutionTab({
   comorbidities,
   problems,
   dischargeConfirmed,
+  onLabBundleRefresh,
 }: Props) {
   const [editorHtml, setEditorHtml] = useState("");
   const [saving, setSaving] = useState(false);
@@ -116,6 +127,10 @@ export default function EvolutionTab({
   );
   const [lastCoreSnapshot, setLastCoreSnapshot] =
     useState<CoreClinicalSnapshot | null>(null);
+  const [firstCoreSnapshot, setFirstCoreSnapshot] =
+    useState<CoreClinicalSnapshot | null>(null);
+  const [showLabCompare, setShowLabCompare] = useState(false);
+  const pendenciesRef = useRef<HTMLDivElement | null>(null);
   const [storedTimeline, setStoredTimeline] = useState<
     { occurred_at: string; event_type: string; summary_text: string }[]
   >([]);
@@ -148,6 +163,7 @@ export default function EvolutionTab({
       setLastCoreAt(data.last_core_generated_at ?? null);
       setFirstCoreRequestAt(data.first_core_request_at ?? null);
       setLastCoreSnapshot(data.last_core_clinical_snapshot ?? null);
+      setFirstCoreSnapshot(data.first_core_clinical_snapshot ?? null);
       setStoredTimeline(data.stored_timeline ?? []);
       setTreatmentResponses(data.treatment_responses ?? []);
     })();
@@ -181,6 +197,7 @@ export default function EvolutionTab({
         evolutions,
         prescriptions,
         vitals: vitalRecords,
+        labValues,
         storedEvents: storedTimeline,
       }),
     [
@@ -188,8 +205,24 @@ export default function EvolutionTab({
       evolutions,
       prescriptions,
       vitalRecords,
+      labValues,
       storedTimeline,
     ],
+  );
+
+  const treatmentInvites = useMemo(
+    () =>
+      buildTreatmentResponseInvites({
+        problems,
+        prescriptions,
+        responses: treatmentResponses,
+      }),
+    [problems, prescriptions, treatmentResponses],
+  );
+
+  const o2TrendSentence = useMemo(
+    () => detectO2FlowIncreaseSentence(vitalRecords),
+    [vitalRecords],
   );
 
   const pendencies = useMemo(() => {
@@ -254,15 +287,6 @@ export default function EvolutionTab({
   );
 
   const generateDraft = useCallback(() => {
-    if (
-      modeUsesRegulationCheck(suggestedMode) &&
-      pendencies.length > 0
-    ) {
-      setError(
-        "Resolva as pendências de regulação antes de gerar este rascunho.",
-      );
-      return;
-    }
     const html = buildEvolutionDraftForMode(suggestedMode, {
       ctx: draftCtx,
       conduct,
@@ -275,6 +299,7 @@ export default function EvolutionTab({
       lastCoreGeneratedAt: lastCoreAt,
       firstCoreRequestAt,
       previousCoreSnapshot: lastCoreSnapshot,
+      firstCoreSnapshot,
       currentCoreSnapshot: buildCoreClinicalSnapshot({
         vitalRecords,
         labValues,
@@ -285,7 +310,7 @@ export default function EvolutionTab({
     setError(null);
   }, [
     suggestedMode,
-    pendencies,
+    firstCoreSnapshot,
     draftCtx,
     conduct,
     timeline,
@@ -328,7 +353,7 @@ export default function EvolutionTab({
       const saved = treatmentResponses.find((r) => r.problem_id === pr.id);
       const defaults = defaultLinkedPrescriptionIds(pr, prescriptions);
       next[pr.id] = {
-        status: saved?.response_status ?? "sem_mudanca",
+        status: saved?.response_status ?? "sem_resposta",
         notes: saved?.notes ?? "",
         linkedPrescriptionIds:
           saved?.linked_prescription_ids?.length
@@ -451,16 +476,6 @@ export default function EvolutionTab({
       : null;
     const isAddendum = Boolean(addendumParentId || draftEv?.addendum_of_id);
     if (isAddendum && !requireAddendumReason()) return;
-    if (
-      !isAddendum &&
-      modeUsesRegulationCheck(suggestedMode) &&
-      pendencies.length > 0
-    ) {
-      setError(
-        "Resolva as pendências de regulação antes de assinar este documento.",
-      );
-      return;
-    }
     setSaving(true);
     setError(null);
 
@@ -575,6 +590,12 @@ export default function EvolutionTab({
 
   return (
     <div className="space-y-6">
+      {showLabCompare && (
+        <LabComparePanel
+          labValues={labValues}
+          onClose={() => setShowLabCompare(false)}
+        />
+      )}
       <section className="rounded-lg border border-navy-900/8 bg-white p-4 sm:p-6">
         <div className="flex flex-col gap-3">
           <div>
@@ -615,6 +636,54 @@ export default function EvolutionTab({
               </button>
             )}
           </div>
+          <div className="flex flex-wrap gap-2 border-t border-navy-900/8 pt-3">
+            {pendencies.length > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  pendenciesRef.current?.scrollIntoView({ behavior: "smooth" })
+                }
+                className="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-950"
+              >
+                ⚠️ Pendências ({pendencies.length})
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowLabCompare(true)}
+              className="rounded-full border border-navy-900/15 bg-white px-3 py-1 text-xs font-medium text-navy-900 hover:bg-navy-50"
+            >
+              📈 Comparar exames
+            </button>
+            <button
+              type="button"
+              onClick={() => setManualMode("core_inicial")}
+              className="rounded-full border border-navy-900/15 bg-white px-3 py-1 text-xs font-medium text-navy-900 hover:bg-navy-50"
+            >
+              🚑 Converter para CORE
+            </button>
+            <button
+              type="button"
+              onClick={() => setManualMode("core_atualizacao")}
+              className="rounded-full border border-navy-900/15 bg-white px-3 py-1 text-xs font-medium text-navy-900 hover:bg-navy-50"
+            >
+              🔄 Atualizar CORE
+            </button>
+            <button
+              type="button"
+              onClick={() => setManualMode("judicializada")}
+              className="rounded-full border border-navy-900/15 bg-white px-3 py-1 text-xs font-medium text-navy-900 hover:bg-navy-50"
+            >
+              ⚖️ Vaga judicializada
+            </button>
+            <button
+              type="button"
+              onClick={() => setManualMode("alta")}
+              className="rounded-full border border-navy-900/15 bg-white px-3 py-1 text-xs font-medium text-navy-900 hover:bg-navy-50"
+            >
+              🏠 Preparar alta
+            </button>
+          </div>
         </div>
 
         {timeline.length > 0 && (
@@ -637,13 +706,34 @@ export default function EvolutionTab({
           </div>
         )}
 
+        {o2TrendSentence && (
+          <p className="mt-4 rounded-md border border-sky-200 bg-sky-50/90 px-3 py-2 text-xs text-sky-950">
+            {o2TrendSentence}
+          </p>
+        )}
+
+        {treatmentInvites.length > 0 && (
+          <ul className="mt-4 space-y-2">
+            {treatmentInvites.map((inv) => (
+              <li
+                key={inv.problemId}
+                className="rounded-md border border-ocean-200 bg-ocean-50/60 px-3 py-2 text-xs text-navy-900"
+              >
+                💬 Registrar resposta ao tratamento de {inv.problemText}?{" "}
+                {inv.detail}
+              </li>
+            ))}
+          </ul>
+        )}
+
         {pendencies.length > 0 && (
           <div
+            ref={pendenciesRef}
             className="mt-4 rounded-md border border-amber-300 bg-amber-50/90 p-3"
             role="status"
           >
             <p className="text-sm font-medium text-amber-950">
-              Pendências para regulação / CORE
+              Pendências para regulação / CORE (aviso — não bloqueia o rascunho)
             </p>
             <ul className="mt-2 list-disc pl-5 text-sm text-amber-950/90">
               {pendencies.map((p) => (
@@ -795,6 +885,42 @@ export default function EvolutionTab({
             </ul>
           </div>
         )}
+      </section>
+
+      <section className="rounded-lg border border-dashed border-navy-900/12 bg-white p-4 sm:p-6">
+        <h3 className="text-sm font-semibold text-navy-950">
+          Importar laudo na evolução (OCR)
+        </h3>
+        <p className="mt-1 text-xs text-navy-800/60">
+          Os valores confirmados são salvos na aba Exames e entram no rascunho
+          automático de CORE/evolução.
+        </p>
+        <div className="mt-3">
+          <LabOcrImporter
+            episodeId={episodeId}
+            compact
+            onSaved={async () => {
+              await onLabBundleRefresh?.();
+              setError(null);
+            }}
+            onError={(msg) => msg && setError(msg)}
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            const lines = formatLabDayLines(labValues);
+            const text =
+              lines.length > 0
+                ? lines.join("\n")
+                : "Nenhum exame laboratorial registrado.";
+            const block = `<p><strong>Exames laboratoriais (prontuário):</strong></p><p>${text.replace(/\n/g, "<br/>")}</p>`;
+            setEditorHtml((prev) => (prev ? `${prev}\n${block}` : block));
+          }}
+          className="mt-3 rounded-md border border-navy-900/12 px-3 py-1.5 text-xs font-medium text-navy-900 hover:bg-navy-50"
+        >
+          Inserir resumo dos labs no editor
+        </button>
       </section>
 
       <section className="rounded-lg border border-navy-900/8 bg-white p-4 sm:p-6">

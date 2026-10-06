@@ -109,6 +109,21 @@ export default function InpatientChartApp({
     null,
   );
 
+  const reloadLabBundle = useCallback(async () => {
+    const res = await fetch(
+      `/api/pacientes/episodios/${episode.id}/exames-laboratorio`,
+    );
+    const labData = await res.json();
+    if (!res.ok) return;
+    setLabBundle({
+      values: labData.values ?? [],
+      pending: labData.pending ?? [],
+      imaging: labData.imaging ?? [],
+      alerts: labData.alerts ?? [],
+      criticalConducts: labData.criticalConducts ?? [],
+    });
+  }, [episode.id]);
+
   const loadChartData = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
@@ -376,6 +391,7 @@ export default function InpatientChartApp({
             comorbidities={comorbidities}
             problems={problems}
             dischargeConfirmed={Boolean(discharge?.confirmed_at)}
+            onLabBundleRefresh={reloadLabBundle}
           />
         )}
 

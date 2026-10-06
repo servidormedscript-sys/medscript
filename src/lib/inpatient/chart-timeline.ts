@@ -1,6 +1,8 @@
 import { UNIT_LIMITATION_ITEMS } from "@/lib/inpatient/unit-limitations";
+import { computeCriticalLabConducts } from "@/lib/inpatient/lab-critical-conduct";
 import type {
   EpisodeEvolution,
+  EpisodeLabValue,
   EpisodePrescription,
   EpisodeVitalRecord,
 } from "@/lib/types/inpatient-chart";
@@ -17,6 +19,7 @@ export function buildChartTimeline(input: {
   evolutions: EpisodeEvolution[];
   prescriptions: EpisodePrescription[];
   vitals: EpisodeVitalRecord[];
+  labValues?: EpisodeLabValue[];
   storedEvents?: TimelineEvent[];
 }): TimelineEvent[] {
   const events: TimelineEvent[] = [];
@@ -59,6 +62,16 @@ export function buildChartTimeline(input: {
       event_type: "evolucao",
       summary_text: "Evolução médica assinada",
     });
+  }
+
+  if (input.labValues?.length) {
+    for (const c of computeCriticalLabConducts(input.labValues)) {
+      events.push({
+        occurred_at: input.episode.updated_at ?? input.episode.created_at,
+        event_type: "exame_critico",
+        summary_text: `Alerta crítico laboratorial: ${c.title}`,
+      });
+    }
   }
 
   if (input.storedEvents) {

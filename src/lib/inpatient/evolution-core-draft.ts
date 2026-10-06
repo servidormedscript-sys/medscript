@@ -33,11 +33,14 @@ import type {
 } from "@/lib/types/inpatient-chart";
 import type { Patient, PatientEpisode } from "@/lib/types/patient";
 import { calculateAge } from "@/lib/utils/age";
+import { formatAllTreatmentResponseParagraphs } from "@/lib/inpatient/treatment-response-format";
+import { buildActivePrescriptionLines } from "@/lib/inpatient/chart-prescription-summary";
 import {
   buildObjectiveWorseningParagraph,
   buildRegulationDocumentSections,
   filterLabsSince,
   formatTreatmentResponsesSinceLastCore,
+  formatTransferClassificationBlock,
 } from "@/lib/inpatient/core-regulation-sections";
 import type { EpisodeImagingReport } from "@/lib/types/inpatient-chart";
 
@@ -76,26 +79,22 @@ function formatTreatmentResponses(
   const active = problems.filter((pr) => pr.active);
   if (active.length === 0) return "Nenhum problema ativo listado.";
   const byProblem = new Map(responses.map((r) => [r.problem_id, r]));
-  const statusLabel: Record<string, string> = {
-    melhora: "Melhora",
-    sem_mudanca: "Sem mudança",
-    piora: "Piora",
-  };
-  return active
-    .map((pr) => {
-      const r = byProblem.get(pr.id);
-      if (!r) return `• ${pr.text}: [registrar resposta ao tratamento]`;
-      const note = r.notes.trim() ? ` — ${r.notes.trim()}` : "";
-      const linked = r.linked_prescription_ids ?? [];
-      const medLines = linked
-        .map((id) => prescriptions.find((rx) => rx.id === id))
-        .filter(Boolean)
-        .map((rx) => `${rx!.name} ${rx!.dose} ${rx!.route}`);
-      const meds =
-        medLines.length > 0 ? ` Medidas: ${medLines.join("; ")}.` : "";
-      return `• ${pr.text}: ${statusLabel[r.response_status] ?? r.response_status}${note}${meds}`;
-    })
-    .join("\n");
+  const lines: string[] = [];
+  for (const pr of active) {
+    const r = byProblem.get(pr.id);
+    if (!r) {
+      lines.push(`• ${pr.text}: [registrar resposta ao tratamento]`);
+      continue;
+    }
+    lines.push(
+      formatAllTreatmentResponseParagraphs({
+        problems: [pr],
+        responses: [r],
+        prescriptions,
+      }),
+    );
+  }
+  return lines.join("\n\n");
 }
 
 function buildRegulationBaseSections(input: {
@@ -227,6 +226,7 @@ export function buildEvolutionDraftForMode(
     lastCoreGeneratedAt?: string | null;
     firstCoreRequestAt?: string | null;
     previousCoreSnapshot?: CoreClinicalSnapshot | null;
+    firstCoreSnapshot?: CoreClinicalSnapshot | null;
     currentCoreSnapshot?: CoreClinicalSnapshot | null;
   },
 ): string {
@@ -292,8 +292,10 @@ export function buildEvolutionDraftForMode(
           : "Data de início da judicialização não registrada.",
       ),
       p(
-        "Documento para regulação judicial — utilize a linha do tempo e os blocos abaixo; o sistema não atribui urgência automática à transferência.",
+        "Documento para regulação judicial — a sequência factual da linha do tempo tem peso central; o sistema não atribui urgência automática à transferência.",
       ),
+      p("LINHA DO TEMPO (detalhada)", true),
+      p(formatTimelineBlock(input.timeline)),
       ...buildRegulationBaseSections({
         patient: input.ctx.patient,
         episode: input.ctx.episode,
@@ -316,8 +318,8 @@ export function buildEvolutionDraftForMode(
 
   const title =
     mode === "core_inicial"
-      ? `SOLICITAÇÃO CORE — ENCAMINHAMENTO INICIAL — ${dateLine}`
-      : `ATUALIZAÇÃO DE SOLICITAÇÃO CORE — ${dateLine}`;
+      ? `EVOLUÇÃO MÉDICA / SOLICITAÇÃO DE TRANSFERÊNCIA VIA CORE — ${dateLine}`
+      : `ATUALIZAÇÃO CORE — ${dateLine}`;
 
   const parts = [
     p(title, true),
@@ -408,16 +410,67 @@ export function buildEvolutionDraftForMode(
         }),
       ),
     );
+    parts.push(p("EXAMES DE CONTROLE", true));
+    parts.push(
+      p(
+        labsForDoc.length > 0
+          ? regSections.exames_laboratoriais
+          : "Nenhum exame de controle novo no período.",
+      ),
+    );
+    parts.push(p("TENDÊNCIA", true));
+    parts.push(p(regSections.tendencia_laboratorial));
+
+    const activeMeds = buildActivePrescriptionLines(input.prescriptions);
+    parts.push(
+      p(
+        activeMeds.length > 0
+          ? `Mantido tratamento com ${activeMeds.join("; ")}.`
+          : "Sem medicações ativas registradas na prescrição.",
+      ),
+    );
+    parts.push(
+      p(
+        formatTreatmentResponsesSinceLastCore({
+          problems: input.problems,
+          responses: input.treatmentResponses,
+          prescriptions: input.prescriptions,
+          sinceIso: since,
+        }),
+      ),
+    );
+
     parts.push(p("PIORA CLÍNICA OBJETIVA", true));
+    const initialSnap = input.firstCoreSnapshot ?? null;
+    const initialDiff =
+      initialSnap && currentSnap
+        ? compareCoreClinicalSnapshots(initialSnap, currentSnap)
+        : [];
     parts.push(
       p(
         buildObjectiveWorseningParagraph(
-          diffLines,
+          [...diffLines, ...initialDiff],
           input.problems,
           input.treatmentResponses,
         ),
       ),
     );
+    if (initialDiff.some((l) => /pior|elevação|queda/i.test(l))) {
+      parts.push(
+        p(
+          `Houve piora desde a solicitação inicial, caracterizada por ${initialDiff.filter((l) => /pior|elevação|queda/i.test(l)).join("; ")}, reforçando a necessidade de avaliação em tempo oportuno.`,
+        ),
+      );
+    }
+
+    parts.push(
+      p(
+        `Permanece necessária transferência para serviço com ${conduct.resource_needed.trim() || "[recurso necessário]"}.`,
+      ),
+    );
+    if (conduct.transfer_class_confirmed && conduct.transfer_class !== "sem") {
+      parts.push(p(formatTransferClassificationBlock(conduct)));
+    }
   }
 
   return parts.join("\n");

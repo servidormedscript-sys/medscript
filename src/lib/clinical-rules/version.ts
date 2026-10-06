@@ -1,1 +1,1 @@
-export const CLINICAL_RULES_VERSION = "2026.09.01";
+export const CLINICAL_RULES_VERSION = "2026.10.06";

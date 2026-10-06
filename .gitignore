@@ -27,6 +27,7 @@
 
 # misc
 .DS_Store
+_pdf_extract.txt
 *.pem
 
 # debug

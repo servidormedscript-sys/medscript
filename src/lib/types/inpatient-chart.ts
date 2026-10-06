@@ -152,7 +152,12 @@ export type EpisodeProblem = {
   created_at: string;
 };
 
-export type TreatmentResponseStatus = "melhora" | "sem_mudanca" | "piora";
+export type TreatmentResponseStatus =
+  | "melhora"
+  | "melhora_parcial"
+  | "sem_mudanca"
+  | "sem_resposta"
+  | "piora";
 
 export type EpisodeTreatmentResponse = {
   id: string;
@@ -163,6 +168,7 @@ export type EpisodeTreatmentResponse = {
   linked_prescription_ids: string[];
   created_by: string | null;
   created_at: string;
+  updated_at?: string | null;
 };
 
 export type EpisodeComorbidities = {

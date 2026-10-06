@@ -5,6 +5,7 @@ import { getCriticalVitalAlerts } from "@/lib/inpatient/vital-alerts";
 import { pickUltimoVital } from "@/lib/inpatient/vital-devices";
 import type { EvolutionDraftContext } from "@/lib/inpatient/evolution-draft";
 import { extractSignedClinicalNarratives } from "@/lib/inpatient/evolution-clinical-extract";
+import { formatTreatmentResponseSentence } from "@/lib/inpatient/treatment-response-format";
 import type {
   EpisodeConduct,
   EpisodeEvolution,
@@ -123,37 +124,29 @@ export function formatTreatmentResponsesSinceLastCore(input: {
     : null;
   const responses =
     since != null
-      ? input.responses.filter(
-          (r) => new Date(r.created_at).getTime() >= since,
-        )
+      ? input.responses.filter((r) => {
+          const t = new Date(r.updated_at ?? r.created_at).getTime();
+          return t >= since;
+        })
       : input.responses;
   if (!responses.length) {
     return since != null
       ? "Nenhuma resposta ao tratamento registrada desde a última atualização CORE."
       : "Nenhuma resposta ao tratamento registrada.";
   }
-  const problemIds = new Set(responses.map((r) => r.problem_id));
-  const subset = input.problems.filter((p) => problemIds.has(p.id));
-  const statusLabel: Record<string, string> = {
-    melhora: "Melhora",
-    sem_mudanca: "Sem mudança",
-    piora: "Piora",
-  };
+  const byProblem = new Map(input.problems.map((p) => [p.id, p]));
   return responses
     .map((r) => {
-      const pr = subset.find((p) => p.id === r.problem_id);
-      const label = pr?.text ?? "Problema";
-      const note = r.notes.trim() ? ` — ${r.notes.trim()}` : "";
-      const linked = r.linked_prescription_ids ?? [];
-      const medLines = linked
-        .map((id) => input.prescriptions.find((rx) => rx.id === id))
-        .filter(Boolean)
-        .map((rx) => `${rx!.name} ${rx!.dose}`);
-      const meds =
-        medLines.length > 0 ? ` Medidas: ${medLines.join("; ")}.` : "";
-      return `• ${label}: ${statusLabel[r.response_status] ?? r.response_status}${note}${meds}`;
+      const pr = byProblem.get(r.problem_id);
+      if (!pr) return "";
+      return formatTreatmentResponseSentence({
+        problem: pr,
+        response: r,
+        prescriptions: input.prescriptions,
+      });
     })
-    .join("\n");
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export function buildObjectiveWorseningParagraph(
@@ -161,7 +154,9 @@ export function buildObjectiveWorseningParagraph(
   problems: EpisodeProblem[],
   responses: EpisodeTreatmentResponse[],
 ): string {
-  const piora = responses.filter((r) => r.response_status === "piora");
+  const piora = responses.filter(
+    (r) => r.response_status === "piora" || r.response_status === "sem_resposta",
+  );
   const worseningVitals = snapshotDiffLines.filter((l) =>
     /pior|elevação|queda.*pior/i.test(l),
   );

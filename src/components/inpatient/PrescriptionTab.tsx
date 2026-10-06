@@ -94,6 +94,7 @@ export default function PrescriptionTab({
   const [calcWeight, setCalcWeight] = useState(
     () => String(parseWeightKg(episode.weight) ?? ""),
   );
+  const [rulesUseAcknowledged, setRulesUseAcknowledged] = useState(false);
 
   const weightKg = parseWeightKg(episode.weight);
   const age = patient.birth_date ? calculateAge(patient.birth_date) : null;
@@ -481,8 +482,19 @@ export default function PrescriptionTab({
             Sugestão por diagnóstico
           </h3>
           <p className="text-[11px] text-navy-800/50">
-            Regras {rulesMeta.version} — revise antes de usar.
+            Regras {rulesMeta.version} ({rulesMeta.activeValidatedCount} validadas
+            institucionalmente) — não substituem julgamento clínico.
           </p>
+          <label className="mt-2 flex items-start gap-2 text-xs text-navy-900">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={rulesUseAcknowledged}
+              onChange={(e) => setRulesUseAcknowledged(e.target.checked)}
+            />
+            Confirmo que revisei as sugestões para este paciente antes de
+            adicionar à prescrição.
+          </label>
           {diagnosisRules.map((rule) => (
             <div key={rule.id} className="mt-3">
               <p className="text-sm font-medium text-navy-900">{rule.label}</p>
@@ -498,9 +510,9 @@ export default function PrescriptionTab({
                     </span>
                     <button
                       type="button"
-                      disabled={saving}
+                      disabled={saving || !rulesUseAcknowledged}
                       onClick={() => addFromRule(med)}
-                      className="rounded border border-navy-900/15 px-2 py-1 text-xs font-medium hover:bg-white"
+                      className="rounded border border-navy-900/15 px-2 py-1 text-xs font-medium hover:bg-white disabled:opacity-50"
                     >
                       Adicionar
                     </button>

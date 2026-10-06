@@ -87,11 +87,19 @@ export async function GET(_request: Request, context: RouteContext) {
     }
   }
 
+  let firstCoreSnapshot = null;
+  if (firstInicial) {
+    firstCoreSnapshot = parseCoreClinicalSnapshot(
+      firstInicial.clinical_snapshot,
+    );
+  }
+
   return NextResponse.json({
     core_generations_count: coreRows.length,
     last_core_generated_at: lastCore?.created_at ?? null,
     first_core_request_at: firstInicial?.created_at ?? null,
     last_core_clinical_snapshot: lastCoreSnapshot,
+    first_core_clinical_snapshot: firstCoreSnapshot,
     stored_timeline: (timelineRes.data ?? []).map((row) => ({
       occurred_at: String((row as Record<string, unknown>).occurred_at),
       event_type: String((row as Record<string, unknown>).event_type),

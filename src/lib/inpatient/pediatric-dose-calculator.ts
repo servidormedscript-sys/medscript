@@ -61,6 +61,28 @@ export function calculatePediatricDoses(weightKg: number): PediatricCalcResult[]
       result: `${Math.round(w * 0.15 * 10) / 10}mg/dose EV (0,15mg/kg)`,
     },
     {
+      id: "bromoprida",
+      label: "Bromoprida",
+      result: `${Math.round(w * 0.5 * 10) / 10}mg/dose EV (0,5mg/kg)`,
+    },
+    {
+      id: "dimenidrinato",
+      label: "Dimenidrinato",
+      result: `${Math.round(w * 1.25 * 10) / 10}mg/dose (1,25mg/kg)`,
+    },
+    {
+      id: "hidrocortisona_asma",
+      label: "Hidrocortisona (asma)",
+      result: `${Math.round(w * 4)}mg EV (4mg/kg)`,
+      note: "Crise asmática — repetir conforme resposta.",
+    },
+    {
+      id: "hidrocortisona_alergia",
+      label: "Hidrocortisona (alergia)",
+      result: `${Math.round(w * 5)}mg EV (5mg/kg)`,
+      note: "Reação alérgica grave — associar ao manejo do quadro.",
+    },
+    {
       id: "adrenalina",
       label: "Adrenalina 1:1000 (anafilaxia)",
       result: `${Math.round(w * 0.01 * 1000) / 1000}mL IM (0,01mg/kg, máx 0,5mg)`,
