@@ -12,6 +12,7 @@ import { seedAdmissionFromProtocolTransfer } from "@/lib/inpatient/seed-admissio
 import { refreshEpisodeRiskLevel } from "@/lib/inpatient/sync-episode-risk";
 import type { ProtocolInternationTransfer } from "@/lib/inpatient/protocol-internation";
 import { computeCriticalLabConducts } from "@/lib/inpatient/lab-critical-conduct";
+import { loadOrgClinicalRules } from "@/lib/clinical-rules/load-org-clinical-rules";
 import { computeLabAlerts } from "@/lib/inpatient/lab-alerts";
 import { computeDischargePrediction } from "@/lib/inpatient/discharge-prediction";
 import { buildPatientNextSteps } from "@/lib/inpatient/patient-next-steps";
@@ -39,6 +40,7 @@ export async function GET() {
   if ("error" in session && session.error) return session.error;
 
   const { supabase, adminId } = session;
+  const orgClinical = await loadOrgClinicalRules(supabase, adminId);
 
   await supabase.rpc("archive_expired_alta_patients");
 
@@ -177,7 +179,10 @@ export async function GET() {
       evolutionAt: [],
     };
     const labAlerts = computeLabAlerts(bundle.labs);
-    const criticalConducts = computeCriticalLabConducts(bundle.labs);
+    const criticalConducts = computeCriticalLabConducts(
+      bundle.labs,
+      orgClinical.labCriticalRules,
+    );
     const internationHours =
       (Date.now() - new Date(ep.created_at).getTime()) / (1000 * 60 * 60);
     const codeUpdatedAt = codeUpdatedAtByEpisode.get(ep.id)

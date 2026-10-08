@@ -7,6 +7,11 @@ import {
   getDefaultSerializedRules,
   parseStoredRules,
 } from "@/lib/clinical-rules/prescription-rules-db";
+import {
+  DEFAULT_LAB_CRITICAL_RULES,
+  parseStoredLabRules,
+  type SerializedLabCriticalRule,
+} from "@/lib/clinical-rules/lab-critical-rules";
 import type { SerializedPrescriptionRule } from "@/lib/clinical-rules/prescription-rules-serialize";
 
 async function ensureRuleSet(
@@ -31,6 +36,7 @@ async function ensureRuleSet(
       admin_id: adminId,
       rules_version: CLINICAL_RULES_VERSION,
       rules: defaults,
+      lab_critical_rules: DEFAULT_LAB_CRITICAL_RULES,
       updated_by: userId,
     })
     .select("*")
@@ -49,9 +55,11 @@ export async function GET() {
   try {
     const row = await ensureRuleSet(supabase, adminId, user.id);
     const rules = parseStoredRules(row.rules);
+    const labRules = parseStoredLabRules(row.lab_critical_rules);
     return NextResponse.json({
       rules_version: row.rules_version ?? CLINICAL_RULES_VERSION,
       rules,
+      lab_critical_rules: labRules,
       updated_at: row.updated_at,
     });
   } catch (e) {
@@ -71,6 +79,7 @@ export async function PUT(request: Request) {
 
   let body: {
     rules?: SerializedPrescriptionRule[];
+    lab_critical_rules?: SerializedLabCriticalRule[];
     rules_version?: string;
   };
   try {
@@ -87,7 +96,17 @@ export async function PUT(request: Request) {
   }
 
   const rules = body.rules as SerializedPrescriptionRule[];
+  const labRules =
+    body.lab_critical_rules != null
+      ? parseStoredLabRules(body.lab_critical_rules)
+      : undefined;
   const version = body.rules_version?.trim() || CLINICAL_RULES_VERSION;
+
+  const { data: existing } = await supabase
+    .from("organization_clinical_rule_sets")
+    .select("lab_critical_rules")
+    .eq("admin_id", adminId)
+    .maybeSingle();
 
   const { data, error } = await supabase
     .from("organization_clinical_rule_sets")
@@ -96,6 +115,9 @@ export async function PUT(request: Request) {
         admin_id: adminId,
         rules_version: version,
         rules,
+        lab_critical_rules:
+          labRules ??
+          parseStoredLabRules(existing?.lab_critical_rules ?? null),
         updated_by: user!.id,
         updated_at: new Date().toISOString(),
       },
@@ -111,6 +133,7 @@ export async function PUT(request: Request) {
   return NextResponse.json({
     rules_version: data.rules_version,
     rules: parseStoredRules(data.rules),
+    lab_critical_rules: parseStoredLabRules(data.lab_critical_rules),
     updated_at: data.updated_at,
   });
 }

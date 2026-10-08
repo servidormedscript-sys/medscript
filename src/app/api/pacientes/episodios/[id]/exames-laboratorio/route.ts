@@ -4,6 +4,7 @@ import {
   getEpisodeForOrg,
 } from "@/lib/api/require-episode";
 import { computeCriticalLabConducts } from "@/lib/inpatient/lab-critical-conduct";
+import { loadOrgClinicalRules } from "@/lib/clinical-rules/load-org-clinical-rules";
 import { computeLabAlerts } from "@/lib/inpatient/lab-alerts";
 import { getAnalyte } from "@/lib/inpatient/lab-analytes";
 import { appendTimelineEvent } from "@/lib/inpatient/timeline-db";
@@ -65,7 +66,7 @@ export async function GET(_request: Request, context: RouteContext) {
   const denied = assertChartAccess(result.episode);
   if (denied) return denied;
 
-  const { supabase } = result.session;
+  const { supabase, adminId } = result.session;
 
   const [vals, pending, imaging] = await Promise.all([
     supabase
@@ -102,6 +103,8 @@ export async function GET(_request: Request, context: RouteContext) {
     mapValue(r as Record<string, unknown>),
   );
 
+  const orgRules = await loadOrgClinicalRules(supabase, adminId);
+
   return NextResponse.json({
     values,
     pending: (pending.data ?? []).map((r) =>
@@ -111,7 +114,10 @@ export async function GET(_request: Request, context: RouteContext) {
       mapImaging(r as Record<string, unknown>),
     ),
     alerts: computeLabAlerts(values),
-    criticalConducts: computeCriticalLabConducts(values),
+    criticalConducts: computeCriticalLabConducts(
+      values,
+      orgRules.labCriticalRules,
+    ),
   });
 }
 

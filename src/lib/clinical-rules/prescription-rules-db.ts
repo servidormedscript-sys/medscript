@@ -22,11 +22,22 @@ export function hydrateRuleSet(
   return stored.map((s) => hydratePrescriptionRule(s, builders));
 }
 
+export function mergeDefaultPrescriptionRules(
+  stored: SerializedPrescriptionRule[],
+): SerializedPrescriptionRule[] {
+  const defaults = getDefaultSerializedRules();
+  const byId = new Map(stored.map((r) => [r.id, r]));
+  for (const d of defaults) {
+    if (!byId.has(d.id)) byId.set(d.id, d);
+  }
+  return [...byId.values()];
+}
+
 export function parseStoredRules(json: unknown): SerializedPrescriptionRule[] {
   if (!Array.isArray(json) || json.length === 0) {
     return getDefaultSerializedRules();
   }
-  return json as SerializedPrescriptionRule[];
+  return mergeDefaultPrescriptionRules(json as SerializedPrescriptionRule[]);
 }
 
 export function rulesFromStored(json: unknown): PrescriptionDiagnosisRule[] {

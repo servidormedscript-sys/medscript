@@ -48,6 +48,43 @@ export const DEFAULT_PRESCRIPTION_RULES: PrescriptionDiagnosisRule[] = [
     ],
   },
   {
+    id: "itu_grave",
+    versao: "1.1",
+    revisadoEm: "2026-10-08",
+    fonte: "IDSA 2011 · EAU 2024",
+    ativo: true,
+    validadoInstitucionalmente: true,
+    pattern:
+      /\b(itu|pielonefrite|infec[cç][aã]o urin[aá]ria|urosepse)\b[\s\S]{0,50}\b(grave|severa|complicad|sepse|choque|uti)|\b(grave|severa|complicad)\b[\s\S]{0,50}\b(itu|pielonefrite|urosepse)\b/i,
+    label: "ITU / pielonefrite grave",
+    meds: [
+      {
+        name: "Piperacilina-Tazobactam",
+        dose: "4g+500mg",
+        route: "EV",
+        frequency: "8/8h",
+        indication: "ITU grave",
+        durationDays: 10,
+      },
+      {
+        name: "Cefepima",
+        dose: "2g",
+        route: "EV",
+        frequency: "12/12h",
+        indication: "ITU grave (alternativa)",
+        durationDays: 10,
+      },
+      {
+        name: "Meropenem",
+        dose: "1g",
+        route: "EV",
+        frequency: "8/8h",
+        indication: "ITU grave (alternativa)",
+        durationDays: 10,
+      },
+    ],
+  },
+  {
     id: "pac_adulto",
     versao: "1.0",
     revisadoEm: "2026-09-25",
@@ -91,6 +128,43 @@ export const DEFAULT_PRESCRIPTION_RULES: PrescriptionDiagnosisRule[] = [
         route: "EV",
         frequency: "8/8h",
         indication: "Celulite/erisipela",
+        durationDays: 7,
+      },
+    ],
+  },
+  {
+    id: "celulite_grave",
+    versao: "1.1",
+    revisadoEm: "2026-10-08",
+    fonte: "IDSA 2014",
+    ativo: true,
+    validadoInstitucionalmente: true,
+    pattern:
+      /\b(celulite|erisipela)\b[\s\S]{0,50}\b(grave|severa|necrotiz|sepse|choque)|\b(grave|severa|necrotiz)\b[\s\S]{0,50}\b(celulite|erisipela)\b/i,
+    label: "Celulite/erisipela grave",
+    meds: [
+      {
+        name: "Cefazolina",
+        dose: "1g",
+        route: "EV",
+        frequency: "8/8h",
+        indication: "Celulite grave",
+        durationDays: 7,
+      },
+      {
+        name: "Vancomicina",
+        dose: "15mg/kg",
+        route: "EV",
+        frequency: "12/12h",
+        indication: "Celulite grave (MRSA / gravidade)",
+        durationDays: 7,
+      },
+      {
+        name: "Piperacilina-Tazobactam",
+        dose: "4,5g",
+        route: "EV",
+        frequency: "6/6h",
+        indication: "Cobertura gram-neg/anaeróbio se necessário",
         durationDays: 7,
       },
     ],
@@ -571,6 +645,14 @@ export const DEFAULT_PRESCRIPTION_RULES: PrescriptionDiagnosisRule[] = [
           indication: "Asma pediátrica",
           durationDays: 5,
         },
+        {
+          name: "Salbutamol spray",
+          dose: "2–4 jatos",
+          route: "inalatória",
+          frequency: "SN broncoespasmo",
+          indication: "Asma pediátrica",
+          durationDays: 5,
+        },
       ];
     },
   },
@@ -659,6 +741,12 @@ export function matchRulesFromList(
   const sepseFoco = out.filter((r) => r.id.startsWith("sepse_foco_"));
   if (sepseFoco.length > 0) {
     return out.filter((r) => r.id !== "sepse_sem_foco");
+  }
+  if (out.some((r) => r.id === "itu_grave")) {
+    return out.filter((r) => r.id !== "itu_pielonefrite");
+  }
+  if (out.some((r) => r.id === "celulite_grave")) {
+    return out.filter((r) => r.id !== "celulite");
   }
   return out;
 }
