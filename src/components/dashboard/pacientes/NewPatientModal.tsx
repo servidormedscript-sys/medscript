@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { inpatientChartUrl } from "@/lib/dashboard/inpatient-chart-url";
+import { observationEpisodeUrl } from "@/lib/dashboard/observation-episode-url";
 import {
   clearProtocolInternationTransfer,
   protocolTransferToAdmissionForm,
@@ -62,6 +63,8 @@ export default function NewPatientModal({
   });
 
   const ageLabel = form.birth_date ? formatAge(form.birth_date) : null;
+  const isObservationAdmission =
+    (lockInitialStatus ?? form.initial_status) === "em_observacao";
 
   useEffect(() => {
     const transfer = readProtocolInternationTransfer();
@@ -116,6 +119,12 @@ export default function NewPatientModal({
       return;
     }
 
+    if (data.episode?.id && form.initial_status === "em_observacao") {
+      onClose();
+      router.push(observationEpisodeUrl(data.episode.id));
+      return;
+    }
+
     onCreated();
   }
 
@@ -136,9 +145,11 @@ export default function NewPatientModal({
           <div>
             <h2 className="text-lg font-medium text-navy-950">Cadastro de paciente</h2>
             <p className="text-sm text-navy-800/60">
-              {lockInitialStatus
-                ? "O paciente será cadastrado diretamente na triagem."
-                : "Preencha os dados e selecione a situação inicial no Kanban."}
+              {lockInitialStatus === "em_observacao"
+                ? "Cadastro simplificado em observação — prontuário completo após promover para internação."
+                : lockInitialStatus
+                  ? `O paciente será cadastrado diretamente em ${STATUS_LABELS[lockInitialStatus]}.`
+                  : "Preencha os dados e selecione a situação inicial no Kanban."}
             </p>
           </div>
           <button
@@ -277,7 +288,9 @@ export default function NewPatientModal({
 
             <div>
               <label className="mb-1 block text-xs font-medium text-navy-800/70">
-                Diagnóstico / motivo de internação
+                {isObservationAdmission
+                  ? "Motivo da observação"
+                  : "Diagnóstico / motivo de internação"}
               </label>
               <textarea
                 rows={2}
@@ -289,33 +302,44 @@ export default function NewPatientModal({
               />
             </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-medium text-navy-800/70">
-                Alergias
-              </label>
-              <textarea
-                rows={2}
-                value={form.allergies}
-                onChange={(e) =>
-                  setForm({ ...form, allergies: e.target.value })
-                }
-                className={inputClass}
-              />
-            </div>
+            {!isObservationAdmission && (
+              <>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-navy-800/70">
+                    Alergias
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={form.allergies}
+                    onChange={(e) =>
+                      setForm({ ...form, allergies: e.target.value })
+                    }
+                    className={inputClass}
+                  />
+                </div>
 
-            <div>
-              <label className="mb-1 block text-xs font-medium text-navy-800/70">
-                Medicações de uso domiciliar
-              </label>
-              <textarea
-                rows={2}
-                value={form.medications}
-                onChange={(e) =>
-                  setForm({ ...form, medications: e.target.value })
-                }
-                className={inputClass}
-              />
-            </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-navy-800/70">
+                    Medicações de uso domiciliar
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={form.medications}
+                    onChange={(e) =>
+                      setForm({ ...form, medications: e.target.value })
+                    }
+                    className={inputClass}
+                  />
+                </div>
+              </>
+            )}
+
+            {isObservationAdmission && (
+              <p className="rounded-md border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-xs text-amber-950/90">
+                Em observação leve não há prontuário de 9 abas. Alergias e
+                medicações podem ser registradas após promover para internado.
+              </p>
+            )}
           </section>
 
           <section className="space-y-4 border-t border-navy-900/8 pt-5">

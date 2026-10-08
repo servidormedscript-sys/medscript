@@ -91,7 +91,9 @@ const RESPONSE_OPTIONS: { value: TreatmentResponseStatus; label: string }[] = (
     TreatmentResponseStatus,
     string,
   ][]
-).map(([value, label]) => ({ value, label }));
+)
+  .filter(([value]) => value !== "sem_mudanca")
+  .map(([value, label]) => ({ value, label }));
 
 export default function EvolutionTab({
   episodeId,
@@ -143,6 +145,7 @@ export default function EvolutionTab({
       {
         status: TreatmentResponseStatus;
         notes: string;
+        otherMeasure: string;
         linkedPrescriptionIds: string[];
       }
     >
@@ -346,6 +349,7 @@ export default function EvolutionTab({
       {
         status: TreatmentResponseStatus;
         notes: string;
+        otherMeasure: string;
         linkedPrescriptionIds: string[];
       }
     > = {};
@@ -355,6 +359,7 @@ export default function EvolutionTab({
       next[pr.id] = {
         status: saved?.response_status ?? "sem_resposta",
         notes: saved?.notes ?? "",
+        otherMeasure: saved?.other_measure ?? "",
         linkedPrescriptionIds:
           saved?.linked_prescription_ids?.length
             ? saved.linked_prescription_ids
@@ -376,6 +381,7 @@ export default function EvolutionTab({
           problem_id: problemId,
           response_status: draft.status,
           notes: draft.notes,
+          other_measure: draft.otherMeasure,
           linked_prescription_ids: draft.linkedPrescriptionIds,
         }),
       },
@@ -800,6 +806,7 @@ export default function EvolutionTab({
                             [pr.id]: {
                               status: e.target.value as TreatmentResponseStatus,
                               notes: d[pr.id]?.notes ?? "",
+                              otherMeasure: d[pr.id]?.otherMeasure ?? "",
                               linkedPrescriptionIds:
                                 d[pr.id]?.linkedPrescriptionIds ?? [],
                             },
@@ -823,6 +830,25 @@ export default function EvolutionTab({
                             [pr.id]: {
                               status: d[pr.id]?.status ?? "sem_mudanca",
                               notes: e.target.value,
+                              otherMeasure: d[pr.id]?.otherMeasure ?? "",
+                              linkedPrescriptionIds:
+                                d[pr.id]?.linkedPrescriptionIds ?? [],
+                            },
+                          }))
+                        }
+                        className="min-w-[12rem] flex-1 rounded border border-navy-900/15 px-2 py-1 text-xs"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Outra medida (5.6)"
+                        value={responseDrafts[pr.id]?.otherMeasure ?? ""}
+                        onChange={(e) =>
+                          setResponseDrafts((d) => ({
+                            ...d,
+                            [pr.id]: {
+                              status: d[pr.id]?.status ?? "sem_mudanca",
+                              notes: d[pr.id]?.notes ?? "",
+                              otherMeasure: e.target.value,
                               linkedPrescriptionIds:
                                 d[pr.id]?.linkedPrescriptionIds ?? [],
                             },
@@ -858,6 +884,8 @@ export default function EvolutionTab({
                                         status:
                                           d[pr.id]?.status ?? "sem_mudanca",
                                         notes: d[pr.id]?.notes ?? "",
+                                        otherMeasure:
+                                          d[pr.id]?.otherMeasure ?? "",
                                         linkedPrescriptionIds,
                                       },
                                     }));

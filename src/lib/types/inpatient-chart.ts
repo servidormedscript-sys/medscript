@@ -165,6 +165,8 @@ export type EpisodeTreatmentResponse = {
   problem_id: string;
   response_status: TreatmentResponseStatus;
   notes: string;
+  /** Outra medida terapêutica (PDF 5.6), além das prescrições vinculadas. */
+  other_measure: string;
   linked_prescription_ids: string[];
   created_by: string | null;
   created_at: string;

@@ -22,7 +22,22 @@ function medSummary(
     .map((id) => prescriptions.find((rx) => rx.id === id))
     .filter(Boolean)
     .map((rx) => `${rx!.name} ${rx!.dose} ${rx!.route}`);
-  return lines.length > 0 ? lines.join(", ") : "medidas terapêuticas instituídas";
+  return lines.length > 0 ? lines.join(", ") : "";
+}
+
+function therapeuticMeasuresSummary(input: {
+  prescriptions: EpisodePrescription[];
+  linkedIds: string[];
+  otherMeasure: string;
+}): string {
+  const parts: string[] = [];
+  const meds = medSummary(input.prescriptions, input.linkedIds);
+  if (meds) parts.push(meds);
+  const other = input.otherMeasure.trim();
+  if (other) parts.push(other);
+  return parts.length > 0
+    ? parts.join(", ")
+    : "medidas terapêuticas instituídas";
 }
 
 /** Frases fixas do PDF 5.6 após confirmação do médico. */
@@ -32,10 +47,11 @@ export function formatTreatmentResponseSentence(input: {
   prescriptions: EpisodePrescription[];
 }): string {
   const problem = input.problem.text.trim();
-  const meds = medSummary(
-    input.prescriptions,
-    input.response.linked_prescription_ids ?? [],
-  );
+  const meds = therapeuticMeasuresSummary({
+    prescriptions: input.prescriptions,
+    linkedIds: input.response.linked_prescription_ids ?? [],
+    otherMeasure: input.response.other_measure ?? "",
+  });
   const note = input.response.notes.trim();
   const suffix = note ? `. ${note}` : "";
 

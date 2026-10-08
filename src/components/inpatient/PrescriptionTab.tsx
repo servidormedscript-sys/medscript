@@ -1,12 +1,18 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  DEFAULT_PRESCRIPTION_RULES,
   getClinicalRulesMeta,
-  matchPrescriptionDiagnosisRules,
+  matchRulesFromList,
   medsForRule,
+  type PrescriptionDiagnosisRule,
   type PrescriptionRuleMed,
 } from "@/lib/clinical-rules/prescription-diagnosis";
+import {
+  hydrateRuleSet,
+  parseStoredRules,
+} from "@/lib/clinical-rules/prescription-rules-db";
 import {
   findActiveAllergyConflicts,
   medicationConflictsAllergy,
@@ -114,9 +120,31 @@ export default function PrescriptionTab({
     [episode.allergies, prescriptions],
   );
 
+  const [orgRules, setOrgRules] = useState<PrescriptionDiagnosisRule[] | null>(
+    null,
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await fetch("/api/organizacao/regras-clinicas");
+      const data = await res.json();
+      if (cancelled || !res.ok || !data.rules) return;
+      setOrgRules(hydrateRuleSet(parseStoredRules(data.rules)));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const diagnosisRules = useMemo(
-    () => matchPrescriptionDiagnosisRules(episode.diagnosis, weightKg),
-    [episode.diagnosis, weightKg],
+    () =>
+      matchRulesFromList(
+        episode.diagnosis,
+        weightKg,
+        orgRules ?? DEFAULT_PRESCRIPTION_RULES,
+      ),
+    [episode.diagnosis, weightKg, orgRules],
   );
 
   const pedDoses = useMemo(() => {

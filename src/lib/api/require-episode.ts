@@ -7,11 +7,7 @@ export { computeInternationDay };
 
 export type EpisodeWithPatient = PatientEpisode & { patient: Patient };
 
-const CHART_ALLOWED_STATUSES = new Set([
-  "internado",
-  "alta_recente",
-  "em_observacao",
-]);
+const CHART_ALLOWED_STATUSES = new Set(["internado", "alta_recente"]);
 
 export async function getEpisodeForOrg(episodeId: string) {
   const session = await getSessionWithAdmin();
@@ -50,7 +46,7 @@ export function assertChartAccess(episode: EpisodeWithPatient): NextResponse | n
     return NextResponse.json(
       {
         error:
-          "O prontuário de internação está disponível para pacientes em observação, internados ou em alta recente.",
+          "O prontuário completo está disponível para pacientes internados ou em alta recente. Em observação, use a ficha leve.",
       },
       { status: 403 },
     );

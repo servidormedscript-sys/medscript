@@ -34,7 +34,10 @@ import type {
 import type { Patient, PatientEpisode } from "@/lib/types/patient";
 import { calculateAge } from "@/lib/utils/age";
 import { formatAllTreatmentResponseParagraphs } from "@/lib/inpatient/treatment-response-format";
-import { buildActivePrescriptionLines } from "@/lib/inpatient/chart-prescription-summary";
+import {
+  buildActivePrescriptionLines,
+  formatTreatmentsRealizedForCore,
+} from "@/lib/inpatient/chart-prescription-summary";
 import {
   buildObjectiveWorseningParagraph,
   buildRegulationDocumentSections,
@@ -42,7 +45,10 @@ import {
   formatTreatmentResponsesSinceLastCore,
   formatTransferClassificationBlock,
 } from "@/lib/inpatient/core-regulation-sections";
-import type { EpisodeImagingReport } from "@/lib/types/inpatient-chart";
+import type {
+  EpisodeImagingReport,
+  EpisodeLabValue,
+} from "@/lib/types/inpatient-chart";
 
 const CORE_STATUS_LABEL: Record<string, string> = {
   nenhum: "Nenhum",
@@ -189,6 +195,116 @@ function buildRegulationBaseSections(input: {
   return parts;
 }
 
+/** Ordem literal do PDF 5.7 (CORE / atualização). */
+function buildCorePdfOrderedSections(input: {
+  patient: Patient;
+  episode: PatientEpisode;
+  conduct: EpisodeConduct;
+  ctx: EvolutionDraftContext;
+  timeline: TimelineEvent[];
+  problems: EpisodeProblem[];
+  treatmentResponses: EpisodeTreatmentResponse[];
+  prescriptions: EpisodePrescription[];
+  evolutions: EpisodeEvolution[];
+  imagingReports: EpisodeImagingReport[];
+  labsForDoc: EpisodeLabValue[];
+  since?: string | null;
+}): string[] {
+  const { patient, episode, conduct, ctx } = input;
+  const parts: string[] = [];
+
+  const age = patient.birth_date ? calculateAge(patient.birth_date) : null;
+  const day = computeInternationDay(episode);
+  const admission = new Date(episode.created_at).toLocaleString("pt-BR");
+  parts.push(
+    p(
+      `${patient.full_name}${age?.years != null ? `, ${age.years} anos` : ""}, leito ${episode.bed?.trim() || "—"}, internado(a) desde ${admission} (${day}º dia).`,
+    ),
+  );
+  parts.push(p(`Diagnóstico principal: ${episode.diagnosis?.trim() || "—"}`));
+
+  parts.push(p("LINHA DO TEMPO (5.10)", true));
+  parts.push(p(formatTimelineBlock(input.timeline, input.since ?? undefined)));
+
+  const regSections = buildRegulationDocumentSections({
+    ctx: input.ctx,
+    conduct,
+    problems: input.problems,
+    evolutions: input.evolutions,
+    imagingReports: input.imagingReports,
+    labsSince: input.labsForDoc,
+  });
+
+  parts.push(p("EVOLUÇÃO CLÍNICA REGISTRADA", true));
+  parts.push(p(regSections.evolucao_registrada));
+
+  const ultimoVital = pickUltimoVital(ctx.vitalRecords);
+  parts.push(p("SINAIS VITAIS ATUAIS", true));
+  parts.push(p(summarizeVitals(ultimoVital)));
+
+  const lastPhysical = ctx.physicalExams[0];
+  parts.push(p("EXAME FÍSICO ATUAL", true));
+  if (lastPhysical) {
+    for (const line of formatPhysicalExamBlock(lastPhysical.systems).split("\n")) {
+      parts.push(p(line));
+    }
+  } else {
+    parts.push(p("Nenhum exame físico registrado."));
+  }
+
+  parts.push(p("TRATAMENTOS JÁ REALIZADOS", true));
+  parts.push(p(formatTreatmentsRealizedForCore(input.prescriptions)));
+
+  parts.push(p("RESPOSTA AO TRATAMENTO", true));
+  parts.push(
+    p(
+      formatTreatmentResponses(
+        input.problems,
+        input.treatmentResponses,
+        input.prescriptions,
+      ),
+    ),
+  );
+
+  parts.push(p("EXAMES LABORATORIAIS", true));
+  parts.push(p(regSections.exames_laboratoriais));
+  parts.push(p("TENDÊNCIA LABORATORIAL", true));
+  parts.push(p(regSections.tendencia_laboratorial));
+  parts.push(p("EXAMES DE IMAGEM", true));
+  parts.push(p(regSections.exames_imagem));
+  parts.push(p("IMPRESSÃO", true));
+  parts.push(p(regSections.impressao));
+  parts.push(p("JUSTIFICATIVA PARA TRANSFERÊNCIA", true));
+  parts.push(p(regSections.justificativa_transferencia));
+  parts.push(p(regSections.classificacao_transferencia));
+
+  if (conduct.contingency_plan.trim()) {
+    parts.push(p(`Plano de contingência: ${conduct.contingency_plan.trim()}`));
+  }
+  parts.push(
+    p(
+      `Limitações da unidade atual: ${formatUnitLimitations(
+        conduct.unit_limitations,
+        conduct.unit_limitation_other,
+      )}`,
+    ),
+  );
+  parts.push(
+    p(`Recurso / especialidade necessária: ${conduct.resource_needed.trim() || "—"}`),
+  );
+  parts.push(
+    p(
+      `Status CORE: ${CORE_STATUS_LABEL[conduct.core_status] ?? conduct.core_status}`,
+    ),
+  );
+
+  if (regSections.aviso_gravidade.trim()) {
+    parts.push(p(regSections.aviso_gravidade));
+  }
+
+  return parts;
+}
+
 function appendRegulationDocumentBlocks(
   parts: string[],
   sections: ReturnType<typeof buildRegulationDocumentSections>,
@@ -206,7 +322,7 @@ function appendRegulationDocumentBlocks(
   parts.push(p(sections.exames_imagem));
   parts.push(p("IMPRESSÃO", true));
   parts.push(p(sections.impressao));
-  parts.push(p("JUSTIFICATIVA DE TRANSFERÊNCIA", true));
+  parts.push(p("JUSTIFICATIVA PARA TRANSFERÊNCIA", true));
   parts.push(p(sections.justificativa_transferencia));
   parts.push(p(sections.classificacao_transferencia));
 }
@@ -321,9 +437,14 @@ export function buildEvolutionDraftForMode(
       ? `EVOLUÇÃO MÉDICA / SOLICITAÇÃO DE TRANSFERÊNCIA VIA CORE — ${dateLine}`
       : `ATUALIZAÇÃO CORE — ${dateLine}`;
 
+  const labsForDoc =
+    mode === "core_atualizacao"
+      ? filterLabsSince(allLabs, since)
+      : allLabs;
+
   const parts = [
     p(title, true),
-    ...buildRegulationBaseSections({
+    ...buildCorePdfOrderedSections({
       patient: input.ctx.patient,
       episode: input.ctx.episode,
       conduct,
@@ -332,14 +453,13 @@ export function buildEvolutionDraftForMode(
       problems: input.problems,
       treatmentResponses: input.treatmentResponses,
       prescriptions: input.prescriptions,
+      evolutions: input.evolutions,
+      imagingReports: imaging,
+      labsForDoc,
       since,
     }),
   ];
 
-  const labsForDoc =
-    mode === "core_atualizacao"
-      ? filterLabsSince(allLabs, since)
-      : allLabs;
   const regSections = buildRegulationDocumentSections({
     ctx: input.ctx,
     conduct,
@@ -348,7 +468,6 @@ export function buildEvolutionDraftForMode(
     imagingReports: imaging,
     labsSince: labsForDoc,
   });
-  appendRegulationDocumentBlocks(parts, regSections);
 
   if (mode === "core_inicial") {
     parts.push(p("SÍNTESE PARA REGULAÇÃO", true));

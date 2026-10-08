@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { inpatientChartUrl } from "@/lib/dashboard/inpatient-chart-url";
+import { observationEpisodeUrl } from "@/lib/dashboard/observation-episode-url";
 import type { InpatientChartTabId } from "@/lib/inpatient/chart-tabs";
 import CodeStatusBadge from "@/components/inpatient/CodeStatusBadge";
 import type { KanbanEpisode, RiskLevel } from "@/lib/types/patient";
@@ -42,10 +43,13 @@ export default function PatientKanbanCard({
   isDragging,
 }: PatientKanbanCardProps) {
   const patient = episode.patient;
+  const inObservation = episode.status === "em_observacao";
   const showChart =
-    episode.status === "internado" ||
-    episode.status === "alta_recente" ||
-    episode.status === "em_observacao";
+    episode.status === "internado" || episode.status === "alta_recente";
+  const showObservation = inObservation;
+  const chartHref = inObservation
+    ? observationEpisodeUrl(episode.id)
+    : inpatientChartUrl(episode.id);
 
   return (
     <article
@@ -130,16 +134,20 @@ export default function PatientKanbanCard({
                     ? "🟢"
                     : "🟡"}
               </span>
-              <Link
-                href={inpatientChartUrl(
-                  episode.id,
-                  step.tab as InpatientChartTabId,
-                )}
-                className="line-clamp-2 underline-offset-2 hover:underline"
-                onClick={(e) => e.stopPropagation()}
-              >
-                {step.text}
-              </Link>
+              {inObservation ? (
+                <span className="line-clamp-2">{step.text}</span>
+              ) : (
+                <Link
+                  href={inpatientChartUrl(
+                    episode.id,
+                    step.tab as InpatientChartTabId,
+                  )}
+                  className="line-clamp-2 underline-offset-2 hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {step.text}
+                </Link>
+              )}
             </li>
           ))}
         </ul>
@@ -164,9 +172,18 @@ export default function PatientKanbanCard({
         </button>
       )}
 
+      {showObservation && (
+        <Link
+          href={chartHref}
+          className="mt-2 block w-full rounded border border-navy-900/12 bg-navy-900 py-1.5 text-center text-xs font-medium text-white transition-colors hover:bg-navy-800"
+          onClick={(e) => e.stopPropagation()}
+        >
+          Observação
+        </Link>
+      )}
       {showChart && (
         <Link
-          href={inpatientChartUrl(episode.id)}
+          href={chartHref}
           className="mt-2 block w-full rounded border border-navy-900/12 bg-navy-900 py-1.5 text-center text-xs font-medium text-white transition-colors hover:bg-navy-800"
           onClick={(e) => e.stopPropagation()}
         >

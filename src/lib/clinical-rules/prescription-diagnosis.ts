@@ -26,7 +26,7 @@ export type PrescriptionDiagnosisRule = {
   meds: PrescriptionRuleMed[];
 };
 
-const RULES: PrescriptionDiagnosisRule[] = [
+export const DEFAULT_PRESCRIPTION_RULES: PrescriptionDiagnosisRule[] = [
   {
     id: "itu_pielonefrite",
     versao: "1.0",
@@ -96,21 +96,174 @@ const RULES: PrescriptionDiagnosisRule[] = [
     ],
   },
   {
-    id: "sepse",
-    versao: "1.0",
-    revisadoEm: "2026-09-25",
-    fonte: "Surviving Sepsis 2026 · ILAS 2023",
+    id: "sepse_foco_pulmonar",
+    versao: "1.1",
+    revisadoEm: "2026-10-08",
+    fonte: "Surviving Sepsis 2026 · ILAS 2023 · PDF 2.5",
     ativo: true,
     validadoInstitucionalmente: true,
-    pattern: /\b(sepse|choque s[eé]ptico)\b/i,
-    label: "Sepse/choque séptico",
+    pattern:
+      /\b(sepse|choque s[eé]ptico)\b[\s\S]{0,80}\b(pulmon|pneum|respirat)|\b(pneumonia)\b[\s\S]{0,80}\b(s[eé]ptic|sepse)\b/i,
+    label: "Sepse — foco pulmonar",
     meds: [
       {
         name: "Ceftriaxona",
         dose: "1g",
         route: "EV",
         frequency: "24/24h",
-        indication: "Sepse — ajustar ao foco",
+        indication: "Sepse foco pulmonar",
+        durationDays: null,
+      },
+      {
+        name: "Claritromicina",
+        dose: "500mg",
+        route: "EV",
+        frequency: "12/12h",
+        indication: "Sepse foco pulmonar",
+        durationDays: null,
+      },
+    ],
+  },
+  {
+    id: "sepse_foco_abdominal",
+    versao: "1.1",
+    revisadoEm: "2026-10-08",
+    fonte: "Surviving Sepsis 2026 · ILAS 2023 · PDF 2.5",
+    ativo: true,
+    validadoInstitucionalmente: true,
+    pattern:
+      /\b(sepse|choque s[eé]ptico)\b[\s\S]{0,80}\b(abdom|digest|periton|apend|colo|biliar|pancreat)|\b(peritonite|colangite)\b/i,
+    label: "Sepse — foco abdominal",
+    meds: [
+      {
+        name: "Ceftriaxona",
+        dose: "1g",
+        route: "EV",
+        frequency: "24/24h",
+        indication: "Sepse foco abdominal",
+        durationDays: null,
+      },
+      {
+        name: "Metronidazol",
+        dose: "500mg",
+        route: "EV",
+        frequency: "8/8h",
+        indication: "Sepse foco abdominal (alt.: Pipe-Tazo 4,5g 6/6h)",
+        durationDays: null,
+      },
+    ],
+  },
+  {
+    id: "sepse_foco_urinario",
+    versao: "1.1",
+    revisadoEm: "2026-10-08",
+    fonte: "Surviving Sepsis 2026 · ILAS 2023 · PDF 2.5",
+    ativo: true,
+    validadoInstitucionalmente: true,
+    pattern:
+      /\b(sepse|choque s[eé]ptico)\b[\s\S]{0,80}\b(urin|pielonefrite|itu|bexiga|prostata)|\b(pielonefrite)\b[\s\S]{0,40}\b(s[eé]ptic|sepse)\b/i,
+    label: "Sepse — foco urinário",
+    meds: [
+      {
+        name: "Ceftriaxona",
+        dose: "1g",
+        route: "EV",
+        frequency: "24/24h",
+        indication: "Sepse foco urinário",
+        durationDays: null,
+      },
+      {
+        name: "Ciprofloxacino",
+        dose: "400mg",
+        route: "EV",
+        frequency: "12/12h",
+        indication: "Sepse foco urinário (alternativa)",
+        durationDays: null,
+      },
+    ],
+  },
+  {
+    id: "sepse_foco_pele",
+    versao: "1.1",
+    revisadoEm: "2026-10-08",
+    fonte: "Surviving Sepsis 2026 · ILAS 2023 · PDF 2.5",
+    ativo: true,
+    validadoInstitucionalmente: true,
+    pattern:
+      /\b(sepse|choque s[eé]ptico)\b[\s\S]{0,80}\b(pele|partes moles|celulite|erisipela|ferida|abscesso cut[aâ]neo)|\b(celulite|erisipela)\b[\s\S]{0,40}\b(s[eé]ptic|sepse)\b/i,
+    label: "Sepse — foco pele/partes moles",
+    meds: [
+      {
+        name: "Oxacilina",
+        dose: "2g",
+        route: "EV",
+        frequency: "4/4h",
+        indication: "Sepse foco pele",
+        durationDays: null,
+      },
+      {
+        name: "Clindamicina",
+        dose: "600mg",
+        route: "EV",
+        frequency: "8/8h",
+        indication: "Sepse foco pele (associar se necessário)",
+        durationDays: null,
+      },
+    ],
+  },
+  {
+    id: "sepse_foco_corrente",
+    versao: "1.1",
+    revisadoEm: "2026-10-08",
+    fonte: "Surviving Sepsis 2026 · ILAS 2023 · PDF 2.5",
+    ativo: true,
+    validadoInstitucionalmente: true,
+    pattern:
+      /\b(sepse|choque s[eé]ptico|bacteremia)\b[\s\S]{0,80}\b(corrente sangu[ií]nea|hemocultura|endovascular|cateter|central)|\b(bacteremia|hemocultura positiva)\b/i,
+    label: "Sepse — corrente sanguínea / cateter",
+    meds: [
+      {
+        name: "Meropenem",
+        dose: "1g",
+        route: "EV",
+        frequency: "8/8h",
+        indication: "Sepse corrente sanguínea",
+        durationDays: null,
+      },
+      {
+        name: "Vancomicina",
+        dose: "15mg/kg",
+        route: "EV",
+        frequency: "12/12h",
+        indication: "Sepse corrente sanguínea",
+        durationDays: null,
+      },
+    ],
+  },
+  {
+    id: "sepse_sem_foco",
+    versao: "1.1",
+    revisadoEm: "2026-10-08",
+    fonte: "Surviving Sepsis 2026 · ILAS 2023 · PDF 2.5",
+    ativo: true,
+    validadoInstitucionalmente: true,
+    pattern: /\b(sepse|choque s[eé]ptico)\b/i,
+    label: "Sepse — foco não definido",
+    meds: [
+      {
+        name: "Cefepima",
+        dose: "2g",
+        route: "EV",
+        frequency: "8/8h",
+        indication: "Sepse sem foco definido",
+        durationDays: null,
+      },
+      {
+        name: "Metronidazol",
+        dose: "500mg",
+        route: "EV",
+        frequency: "8/8h",
+        indication: "Sepse sem foco definido",
         durationDays: null,
       },
     ],
@@ -471,14 +624,26 @@ const RULES: PrescriptionDiagnosisRule[] = [
   },
 ];
 
-export function matchPrescriptionDiagnosisRules(
+export function getPediatricRuleBuilders(): Record<
+  string,
+  (weightKg: number) => PrescriptionRuleMed[]
+> {
+  const map: Record<string, (weightKg: number) => PrescriptionRuleMed[]> = {};
+  for (const rule of DEFAULT_PRESCRIPTION_RULES) {
+    if (rule.buildMeds) map[rule.id] = rule.buildMeds;
+  }
+  return map;
+}
+
+export function matchRulesFromList(
   diagnosis: string | null | undefined,
   weightKg: number | null,
+  rules: PrescriptionDiagnosisRule[],
 ): PrescriptionDiagnosisRule[] {
   const text = diagnosis?.trim() ?? "";
   if (!text) return [];
   const out: PrescriptionDiagnosisRule[] = [];
-  for (const rule of RULES) {
+  for (const rule of rules) {
     if (
       !rule.ativo ||
       !rule.validadoInstitucionalmente ||
@@ -491,7 +656,18 @@ export function matchPrescriptionDiagnosisRules(
     }
     out.push(rule);
   }
+  const sepseFoco = out.filter((r) => r.id.startsWith("sepse_foco_"));
+  if (sepseFoco.length > 0) {
+    return out.filter((r) => r.id !== "sepse_sem_foco");
+  }
   return out;
+}
+
+export function matchPrescriptionDiagnosisRules(
+  diagnosis: string | null | undefined,
+  weightKg: number | null,
+): PrescriptionDiagnosisRule[] {
+  return matchRulesFromList(diagnosis, weightKg, DEFAULT_PRESCRIPTION_RULES);
 }
 
 export function medsForRule(
@@ -505,12 +681,12 @@ export function medsForRule(
 }
 
 export function getClinicalRulesMeta() {
-  const activeValidated = RULES.filter(
+  const activeValidated = DEFAULT_PRESCRIPTION_RULES.filter(
     (r) => r.ativo && r.validadoInstitucionalmente,
   ).length;
   return {
     version: CLINICAL_RULES_VERSION,
-    ruleCount: RULES.length,
+    ruleCount: DEFAULT_PRESCRIPTION_RULES.length,
     activeValidatedCount: activeValidated,
   };
 }

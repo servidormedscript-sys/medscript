@@ -1,28 +1,21 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import InpatientChartApp from "@/components/inpatient/InpatientChartApp";
+import ObservationLightApp from "@/components/dashboard/pacientes/ObservationLightApp";
 import { getOrganizationAdminId } from "@/lib/auth/get-organization-admin-id";
 import { requireSessionProfile } from "@/lib/auth/get-session-profile";
 import { createClient } from "@/lib/supabase/server";
 import type { Patient, PatientEpisode } from "@/lib/types/patient";
 
-const CHART_ALLOWED = new Set(["internado", "alta_recente"]);
-
 type PageProps = {
   params: Promise<{ episodeId: string }>;
-  searchParams: Promise<{ tab?: string }>;
 };
 
-export default async function InpatientChartPage({
-  params,
-  searchParams,
-}: PageProps) {
+export default async function ObservationEpisodePage({ params }: PageProps) {
   const { profile } = await requireSessionProfile();
-  if (!profile) {
-    redirect("/login");
-  }
+  if (!profile) redirect("/login");
+
   const adminId = getOrganizationAdminId(profile);
   const { episodeId } = await params;
-  const { tab } = await searchParams;
 
   const supabase = await createClient();
   const { data: episode, error } = await supabase
@@ -31,32 +24,28 @@ export default async function InpatientChartPage({
     .eq("id", episodeId)
     .single();
 
-  if (error || !episode) {
-    notFound();
-  }
+  if (error || !episode) notFound();
 
   const patient = episode.patient as Patient | undefined;
-  if (!patient || patient.admin_id !== adminId) {
-    notFound();
-  }
+  if (!patient || patient.admin_id !== adminId) notFound();
 
   if (episode.archived_at) {
-    redirect("/dashboard/relatorio-pacientes");
-  }
-
-  if (episode.status === "em_observacao") {
-    redirect(`/dashboard/pacientes/${episodeId}/observacao`);
-  }
-
-  if (!CHART_ALLOWED.has(episode.status)) {
-    redirect("/dashboard/relatorio-pacientes");
+    return (
+      <div className="p-8">
+        <p className="text-sm text-navy-800/70">Ficha arquivada.</p>
+        <Link href="/dashboard/relatorio-pacientes" className="mt-2 text-sm underline">
+          Voltar
+        </Link>
+      </div>
+    );
   }
 
   return (
-    <InpatientChartApp
-      episode={episode as PatientEpisode}
-      patient={patient}
-      initialTab={tab}
-    />
+    <div className="min-h-screen bg-navy-50/30 px-4 py-8 sm:px-6 lg:px-8">
+      <ObservationLightApp
+        episode={episode as PatientEpisode}
+        patient={patient}
+      />
+    </div>
   );
 }

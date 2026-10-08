@@ -9,6 +9,7 @@ import {
   ACCOUNT_PASSWORD_MIN_LENGTH,
 } from "@/lib/auth/password-policy";
 import BedsManager from "@/components/dashboard/organizacao/BedsManager";
+import ClinicalRulesManager from "@/components/dashboard/organizacao/ClinicalRulesManager";
 
 type TeamWithMembers = Organization & {
   organization_members: {
@@ -29,9 +30,9 @@ type OrganizacaoManagerProps = {
 
 export default function OrganizacaoManager({ isAdmin }: OrganizacaoManagerProps) {
   const { confirm, dialog } = useConfirmDialog();
-  const [activeTab, setActiveTab] = useState<"usuarios" | "equipes" | "leitos">(
-    "usuarios",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "usuarios" | "equipes" | "leitos" | "regras"
+  >("usuarios");
   const [users, setUsers] = useState<Profile[]>([]);
   const [teams, setTeams] = useState<TeamWithMembers[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,6 +237,19 @@ export default function OrganizacaoManager({ isAdmin }: OrganizacaoManagerProps)
         >
           Leitos
         </button>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => setActiveTab("regras")}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === "regras"
+                ? "border-b-2 border-navy-900 text-navy-950"
+                : "text-navy-800/50 hover:text-navy-800"
+            }`}
+          >
+            Regras clínicas
+          </button>
+        )}
       </div>
 
       {message && (
@@ -379,6 +393,14 @@ export default function OrganizacaoManager({ isAdmin }: OrganizacaoManagerProps)
         </div>
       ) : activeTab === "leitos" ? (
         <BedsManager isAdmin={isAdmin} />
+      ) : activeTab === "regras" ? (
+        isAdmin ? (
+          <ClinicalRulesManager />
+        ) : (
+          <p className="text-sm text-navy-800/60">
+            Apenas o administrador pode editar regras clínicas.
+          </p>
+        )
       ) : (
         <div className="space-y-8">
           {isAdmin ? (

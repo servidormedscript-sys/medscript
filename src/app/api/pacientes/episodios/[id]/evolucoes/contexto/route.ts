@@ -16,6 +16,7 @@ function mapTreatment(row: Record<string, unknown>): EpisodeTreatmentResponse {
     problem_id: String(row.problem_id),
     response_status: row.response_status as EpisodeTreatmentResponse["response_status"],
     notes: String(row.notes ?? ""),
+    other_measure: String(row.other_measure ?? ""),
     linked_prescription_ids: Array.isArray(linked)
       ? linked.map(String)
       : [],

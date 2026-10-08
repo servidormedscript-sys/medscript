@@ -62,6 +62,9 @@ export default function PatientKanbanBoard() {
   } | null>(null);
 
   const [showNewPatient, setShowNewPatient] = useState(false);
+  const [newPatientLockStatus, setNewPatientLockStatus] = useState<
+    PatientStatus | undefined
+  >(undefined);
   const [moveEpisode, setMoveEpisode] = useState<KanbanEpisode | null>(null);
   const [moveTargetStatus, setMoveTargetStatus] = useState<PatientStatus | null>(
     null
@@ -268,13 +271,28 @@ export default function PatientKanbanBoard() {
         </div>
 
         {activeTab === "kanban" && (
-        <button
-          type="button"
-          onClick={() => setShowNewPatient(true)}
-          className="rounded-md bg-navy-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-navy-800"
-        >
-          Novo paciente
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setNewPatientLockStatus(undefined);
+              setShowNewPatient(true);
+            }}
+            className="rounded-md bg-navy-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-navy-800"
+          >
+            Novo paciente
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setNewPatientLockStatus("em_observacao");
+              setShowNewPatient(true);
+            }}
+            className="rounded-md border border-navy-900/15 bg-white px-4 py-2 text-sm font-medium text-navy-900 transition-colors hover:bg-navy-50"
+          >
+            Observação leve
+          </button>
+        </div>
         )}
       </div>
 
@@ -404,6 +422,7 @@ export default function PatientKanbanBoard() {
           onSpecialtyFilterChange={setSpecialtyFilter}
           onInternarAqui={(bed) => {
             setPrefillBed(bed);
+            setNewPatientLockStatus("internado");
             setShowNewPatient(true);
           }}
         />
@@ -426,21 +445,28 @@ export default function PatientKanbanBoard() {
 
       {showNewPatient && (
         <NewPatientModal
-          lockInitialStatus={prefillBed ? "internado" : undefined}
+          lockInitialStatus={
+            prefillBed ? "internado" : newPatientLockStatus
+          }
           initialOrganizationBed={prefillBed ?? undefined}
           onClose={() => {
             setShowNewPatient(false);
             setPrefillBed(null);
+            setNewPatientLockStatus(undefined);
           }}
           onCreated={() => {
             const internedInBed = prefillBed;
+            const wasObservation = newPatientLockStatus === "em_observacao";
             setShowNewPatient(false);
             setPrefillBed(null);
+            setNewPatientLockStatus(undefined);
             setMessage({
               type: "success",
               text: internedInBed
                 ? "Paciente internado no leito selecionado."
-                : "Paciente cadastrado em triagem.",
+                : wasObservation
+                  ? "Paciente cadastrado em observação leve."
+                  : "Paciente cadastrado em triagem.",
             });
             loadKanban();
           }}
